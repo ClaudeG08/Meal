@@ -10,15 +10,6 @@ const SUB_CATEGORIES = {
   'Desserts': ['Tous'],
 };
 
-const DAYS = [
-  { id: 1, label: 'Jour 1' },
-  { id: 2, label: 'Jour 2' },
-  { id: 3, label: 'Jour 3' },
-  { id: 4, label: 'Jour 4' },
-  { id: 5, label: 'Jour 5' },
-  { id: 6, label: 'Jour 6' },
-];
-
 export default function App() {
   const [activeTab, setActiveTab] = useState('recipes');
 
@@ -36,14 +27,19 @@ export default function App() {
   const [formTitle, setFormTitle] = useState('');
   const [formCategory, setFormCategory] = useState('Plats');
   const [formSubCategory, setFormSubCategory] = useState('Tartes & Quiches');
-  const [formServings, setFormServings] = useState(4); // Nombre de personnes de base
+  const [formServings, setFormServings] = useState(4);
   const [formIngredients, setFormIngredients] = useState([{ name: '', quantity: '' }]);
   const [formInstructions, setFormInstructions] = useState('');
 
   // --- ÉTATS SELECTION NOMBRE DE PERSONNES ---
   const [selectedGuests, setSelectedGuests] = useState(4);
 
-  // --- ÉTATS PLANNING (Dual: Lista + Agenda) ---
+  // --- ÉTATS PLANNING & AGENDA 21 JOURS ---
+  const [startDate, setStartDate] = useState(() => {
+    const saved = localStorage.getItem('agenda_start_date');
+    return saved || new Date().toISOString().split('T')[0];
+  });
+
   const [plannedMeals, setPlannedMeals] = useState(() => {
     const saved = localStorage.getItem('planned_meals_v2');
     return saved ? JSON.parse(saved) : [];
@@ -65,6 +61,10 @@ export default function App() {
   }, [agenda]);
 
   useEffect(() => {
+    localStorage.setItem('agenda_start_date', startDate);
+  }, [startDate]);
+
+  useEffect(() => {
     fetchRecipes();
   }, []);
 
@@ -73,14 +73,36 @@ export default function App() {
     if (data) setRecipes(data);
   };
 
-  // Synchronise le sélecteur de personnes quand on ouvre une fiche
   useEffect(() => {
     if (activeRecipe) {
       setSelectedGuests(activeRecipe.servings || 4);
     }
   }, [activeRecipe]);
 
-  // --- FORMULAIRE ---
+  // --- GÉNÉRATION DES 21 JOURS ---
+  const generateDays = () => {
+    const daysList = [];
+    const baseDate = startDate ? new Date(startDate) : new Date();
+
+    for (let i = 0; i < 21; i++) {
+      const currentDate = new Date(baseDate);
+      currentDate.setDate(baseDate.getDate() + i);
+
+      const dayKey = currentDate.toISOString().split('T')[0];
+      const formattedLabel = currentDate.toLocaleDateString('fr-FR', {
+        weekday: 'short',
+        day: '2-digit',
+        month: '2-digit',
+      });
+
+      daysList.push({ id: dayKey, label: formattedLabel });
+    }
+    return daysList;
+  };
+
+  const days = generateDays();
+
+  // --- FORMULAIRE RECETTE ---
   const openCreateForm = () => {
     setEditingId(null);
     setFormTitle('');
@@ -193,6 +215,20 @@ export default function App() {
     alert(`"${recipe.title}" (${selectedGuests} pers.) ajouté au panier !`);
   };
 
+  // SUPPRESSION D'UN REPAS DE LA LISTE
+  const removePlannedMeal = (id) => {
+    setPlannedMeals(plannedMeals.filter((m) => m.id !== id));
+    
+    // Nettoyer l'agenda si ce repas y était assigné
+    const updatedAgenda = { ...agenda };
+    Object.keys(updatedAgenda).forEach((key) => {
+      if (updatedAgenda[key] === id) {
+        delete updatedAgenda[key];
+      }
+    });
+    setAgenda(updatedAgenda);
+  };
+
   const updateGuests = (id, delta) => {
     setPlannedMeals(
       plannedMeals.map((item) =>
@@ -232,19 +268,15 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans">
-      {/* BARRE DE NAVIGATION AVEC LOGO */}
+      {/* BARRE DE NAVIGATION */}
       <header className="bg-emerald-700 text-white shadow-md sticky top-0 z-30">
         <div className="max-w-2xl mx-auto flex justify-between items-center p-3">
-          {/* Remplacement par votre Logo */}
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}>
             <img 
               src="/logo.png" 
               alt="Logo" 
               className="h-9 w-auto object-contain rounded-lg"
-              onError={(e) => {
-                // Secours visuel si le fichier logo.png n'existe pas encore dans /public
-                e.target.style.display = 'none';
-              }}
+              onError={(e) => { e.target.style.display = 'none'; }}
             />
             <span className="font-bold text-lg tracking-wide hidden sm:inline"></span>
           </div>
@@ -294,7 +326,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* Catégories Principales */}
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
               {MAIN_CATEGORIES.map((cat) => (
                 <button
@@ -314,7 +345,6 @@ export default function App() {
               ))}
             </div>
 
-            {/* Sous-Catégories */}
             {SUB_CATEGORIES[selectedMainCat] && (
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {SUB_CATEGORIES[selectedMainCat].map((sub) => (
@@ -333,7 +363,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Recherche */}
             <input
               type="text"
               placeholder="🔍 Rechercher une recette..."
@@ -342,7 +371,6 @@ export default function App() {
               className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
 
-            {/* Cartes recettes */}
             <div className="grid gap-3">
               {filteredRecipes.length === 0 ? (
                 <p className="text-center text-slate-400 py-6 text-sm">Aucune recette disponible.</p>
@@ -367,7 +395,7 @@ export default function App() {
           </div>
         )}
 
-        {/* --- DÉTAIL D'UNE RECETTE SÉLECTIONNÉE --- */}
+        {/* --- DÉTAIL RECETTES --- */}
         {activeTab === 'recipes' && activeRecipe && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
             <div className="flex justify-between items-center">
@@ -400,7 +428,6 @@ export default function App() {
               </p>
             </div>
 
-            {/* CHOIX DU NOMBRE DE PERSONNES POUR LE PANIER */}
             <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 flex justify-between items-center">
               <span className="text-xs font-bold text-emerald-900">
                 Préparer pour :
@@ -433,7 +460,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Onglets Fiche Recette */}
             <div className="flex border-b border-slate-200">
               <button
                 onClick={() => setRecipeDetailTab('ingredients')}
@@ -480,7 +506,7 @@ export default function App() {
           </div>
         )}
 
-        {/* --- MODALE FORMULAIRE DE CRÉATION / ÉDITION --- */}
+        {/* --- MODALE FORMULAIRE --- */}
         {isFormOpen && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl p-5 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4">
@@ -495,9 +521,7 @@ export default function App() {
 
               <form onSubmit={handleSaveRecipe} className="space-y-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                    Titre
-                  </label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Titre</label>
                   <input
                     type="text"
                     value={formTitle}
@@ -509,9 +533,7 @@ export default function App() {
 
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                      Catégorie
-                    </label>
+                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Catégorie</label>
                     <select
                       value={formCategory}
                       onChange={(e) => {
@@ -527,9 +549,7 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                      Sous-Cat.
-                    </label>
+                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Sous-Cat.</label>
                     <select
                       value={formSubCategory}
                       onChange={(e) => setFormSubCategory(e.target.value)}
@@ -542,9 +562,7 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                      Base Pers.
-                    </label>
+                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Base Pers.</label>
                     <input
                       type="number"
                       min="1"
@@ -598,7 +616,7 @@ export default function App() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                    Étapes de préparation (Optionnel)
+                    Étapes de préparation
                   </label>
                   <textarea
                     rows="3"
@@ -629,7 +647,7 @@ export default function App() {
         )}
 
         {/* ========================================================= */}
-        {/* 2. SECTION PLANNING (Liste des repas & Agenda)           */}
+        {/* 2. SECTION PLANNING (Liste des repas & Agenda 21 jours)  */}
         {/* ========================================================= */}
         {activeTab === 'planning' && (
           <div className="space-y-4">
@@ -648,7 +666,7 @@ export default function App() {
                   planningSubTab === 'agenda' ? 'bg-white text-slate-800 shadow' : 'text-slate-600'
                 }`}
               >
-                Agenda
+                Agenda (3 semaines)
               </button>
             </div>
 
@@ -674,24 +692,35 @@ export default function App() {
                           }`}
                         >
                           {meal.assignedDay
-                            ? `Jour ${meal.assignedDay} (${meal.assignedSlot})`
+                            ? `Affecté : ${days.find((d) => d.id === meal.assignedDay)?.label || meal.assignedDay} (${meal.assignedSlot === 'M' ? 'Midi' : 'Soir'})`
                             : 'N/A : Non affecté'}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+                          <button
+                            onClick={() => updateGuests(meal.id, -1)}
+                            className="w-6 h-6 bg-white rounded font-bold text-slate-600 text-xs"
+                          >
+                            -
+                          </button>
+                          <span className="text-xs font-bold text-slate-700">{meal.guests} pers</span>
+                          <button
+                            onClick={() => updateGuests(meal.id, 1)}
+                            className="w-6 h-6 bg-white rounded font-bold text-slate-600 text-xs"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* BOUTON SUPPRIMER LE REPAS DE LA LISTE */}
                         <button
-                          onClick={() => updateGuests(meal.id, -1)}
-                          className="w-6 h-6 bg-white rounded font-bold text-slate-600 text-xs"
+                          onClick={() => removePlannedMeal(meal.id)}
+                          title="Supprimer du panier"
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition text-sm"
                         >
-                          -
-                        </button>
-                        <span className="text-xs font-bold text-slate-700">{meal.guests} pers</span>
-                        <button
-                          onClick={() => updateGuests(meal.id, 1)}
-                          className="w-6 h-6 bg-white rounded font-bold text-slate-600 text-xs"
-                        >
-                          +
+                          🗑️
                         </button>
                       </div>
                     </div>
@@ -701,50 +730,66 @@ export default function App() {
             )}
 
             {planningSubTab === 'agenda' && (
-              <div className="grid gap-3">
-                {DAYS.map((day) => (
-                  <div key={day.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2">
-                    <span className="font-bold text-xs text-emerald-700 uppercase tracking-wider">
-                      {day.label}
-                    </span>
+              <div className="space-y-4">
+                {/* Sélecteur de date de début */}
+                <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 uppercase">
+                    📅 Date de début :
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="bg-slate-100 border border-slate-200 rounded-lg p-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      {['M', 'S'].map((slot) => {
-                        const key = `${day.id}-${slot}`;
-                        const currentMealId = agenda[key] || '';
-                        const isAssigned = Boolean(currentMealId);
+                {/* Grille des 21 jours */}
+                <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-1">
+                  {days.map((day) => (
+                    <div key={day.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2">
+                      <span className="font-bold text-xs text-emerald-700 uppercase tracking-wider">
+                        {day.label}
+                      </span>
 
-                        return (
-                          <div
-                            key={slot}
-                            className={`p-2 rounded-lg border text-xs flex flex-col gap-1 transition ${
-                              isAssigned
-                                ? 'bg-emerald-50 border-emerald-300'
-                                : 'bg-slate-50 border-slate-200'
-                            }`}
-                          >
-                            <span className="font-bold text-slate-500">
-                              {slot === 'M' ? 'Midi' : 'Soir'}
-                            </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {['M', 'S'].map((slot) => {
+                          const key = `${day.id}-${slot}`;
+                          const currentMealId = agenda[key] || '';
+                          const isAssigned = Boolean(currentMealId);
 
-                            <select
-                              value={currentMealId}
-                              onChange={(e) => assignMealToAgenda(day.id, slot, e.target.value)}
-                              className="bg-white border border-slate-200 rounded p-1 text-xs text-slate-700 focus:outline-none"
+                          return (
+                            <div
+                              key={slot}
+                              className={`p-2 rounded-lg border text-xs flex flex-col gap-1 transition ${
+                                isAssigned
+                                  ? 'bg-emerald-50 border-emerald-300'
+                                  : 'bg-slate-50 border-slate-200'
+                              }`}
                             >
-                              <option value="">-- Cliquer pour affecter --</option>
-                              {plannedMeals.map((m) => (
-                                <option key={m.id} value={m.id}>
-                                  {m.recipeTitle} ({m.guests}p)
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        );
-                      })}
+                              <span className="font-bold text-slate-500">
+                                {slot === 'M' ? 'Midi' : 'Soir'}
+                              </span>
+
+                              <select
+                                value={currentMealId}
+                                onChange={(e) => assignMealToAgenda(day.id, slot, e.target.value)}
+                                className="bg-white border border-slate-200 rounded p-1 text-xs text-slate-700 focus:outline-none"
+                              >
+                                <option value="">-- Cliquer pour affecter --</option>
+                                {plannedMeals.map((m) => (
+                                  <option key={m.id} value={m.id}>
+                                    {m.recipeTitle} ({m.guests}p)
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>
