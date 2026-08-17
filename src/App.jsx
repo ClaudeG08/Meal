@@ -1,48 +1,15 @@
 import React, { useState, useEffect } from 'react';
-
-// Recettes par défaut si le localStorage est vide
-const DEFAULT_RECIPES = [
-  {
-    id: 1,
-    title: 'Pâtes à la Carbonara',
-    category: 'Plat',
-    ingredients: [
-      { name: 'Pâtes (g)', quantity: 250 },
-      { name: 'Lardons (g)', quantity: 150 },
-      { name: 'Œufs', quantity: 3 },
-      { name: 'Parmesan (g)', quantity: 50 },
-    ],
-  },
-  {
-    id: 2,
-    title: 'Salade César',
-    category: 'Entrée',
-    ingredients: [
-      { name: 'Salade romaine', quantity: 1 },
-      { name: 'Filets de poulet', quantity: 2 },
-      { name: 'Croutons (g)', quantity: 100 },
-      { name: 'Sauce César (ml)', quantity: 50 },
-    ],
-  },
-];
+import { supabase } from './supabaseClient';
 
 const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const MEALS = ['Déjeuner', 'Dîner'];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('recipes');
+  const [recipes, setRecipes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // --- 1. RECETTES AVEC SAUVEGARDE PERSISTANTE ---
-  const [recipes, setRecipes] = useState(() => {
-    const saved = localStorage.getItem('meal_planner_recipes');
-    return saved ? JSON.parse(saved) : DEFAULT_RECIPES;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('meal_planner_recipes', JSON.stringify(recipes));
-  }, [recipes]);
-
-  // --- 2. PLANNING AVEC SAUVEGARDE PERSISTANTE ---
+  // --- PLANNING (dans le localStorage pour l'instant) ---
   const [planning, setPlanning] = useState(() => {
     const saved = localStorage.getItem('meal_planner_planning');
     return saved ? JSON.parse(saved) : {};
@@ -52,15 +19,30 @@ export default function App() {
     localStorage.setItem('meal_planner_planning', JSON.stringify(planning));
   }, [planning]);
 
-  // --- États pour les formulaires ---
+  // --- CHARGER LES RECETTES DEPUIS SUPABASE ---
+  const fetchRecipes = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('recipes')
+      .select('*')
+      .order('id', { ascending: false });
+
+    if (error) {
+      console.error('Erreur lors du chargement :', error);
+    } else {
+      setRecipes(data || []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchRecipes();
+  }, []);
+
+  // --- FORMULAIRE D'AJOUT ---
   const [newTitle, setNewTitle] = useState('');
   const [ingredients, setIngredients] = useState([{ name: '', quantity: '' }]);
 
-  const [editingId, setEditingId] = useState(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editIngredients, setEditIngredients] = useState([]);
-
-  // Formulaire d'ajout
   const handleIngredientChange = (index, field, value) => {
     const updated = [...ingredients];
     updated[index][field] = value;
@@ -71,23 +53,37 @@ export default function App() {
     setIngredients([...ingredients, { name: '', quantity: '' }]);
   };
 
-  const handleAddRecipe = (e) => {
+  const handleAddRecipe = async (e) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    const newRecipe = {
-      id: Date.now(),
-      title: newTitle,
-      category: 'Plat',
-      ingredients: ingredients.filter((ing) => ing.name.trim() !== ''),
-    };
+    const filteredIngredients = ingredients.filter((ing) => ing.name.trim() !== '');
 
-    setRecipes([...recipes, newRecipe]);
-    setNewTitle('');
-    setIngredients([{ name: '', quantity: '' }]);
+    const { data, error } = await supabase
+      .from('recipes')
+      .insert([
+        {
+          title: newTitle,
+          category: 'Plat',
+          ingredients: filteredIngredients,
+        },
+      ])
+      .select();
+
+    if (error) {
+      alert('Erreur lors de l\'ajout de la recette : ' + error.message);
+    } else if (data) {
+      setRecipes([data[0], ...recipes]);
+      setNewTitle('');
+      setIngredients([{ name: '', quantity: '' }]);
+    }
   };
 
-  // Édition
+  // --- ÉDITION ---
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editIngredients, setEditIngredients] = useState([]);
+
   const startEditing = (recipe) => {
     setEditingId(recipe.id);
     setEditTitle(recipe.title);
@@ -108,26 +104,41 @@ export default function App() {
     setEditIngredients(editIngredients.filter((_, i) => i !== index));
   };
 
-  const saveEdit = (id) => {
-    const updatedRecipes = recipes.map((r) => {
-      if (r.id === id) {
-        return {
-          ...r,
-          title: editTitle,
-          ingredients: editIngredients.filter((ing) => ing.name.trim() !== ''),
-        };
-      }
-      return r;
-    });
-    setRecipes(updatedRecipes);
-    setEditingId(null);
+  const saveEdit = async (id) => {
+    const filteredIngredients = editIngredients.filter((ing) => ing.name.trim() !== '');
+
+    const { error } = await supabase
+      .from('recipes')
+      .update({
+        title: editTitle,
+        ingredients: filteredIngredients,
+      })
+      .eq('id', id);
+
+    if (error) {
+      alert('Erreur lors de la modification : ' + error.message);
+    } else {
+      setRecipes(
+        recipes.map((r) =>
+          r.id === id ? { ...r, title: editTitle, ingredients: filteredIngredients } : r
+        )
+      );
+      setEditingId(null);
+    }
   };
 
-  const deleteRecipe = (id) => {
-    setRecipes(recipes.filter((r) => r.id !== id));
+  // --- SUPPRESSION ---
+  const deleteRecipe = async (id) => {
+    const { error } = await supabase.from('recipes').delete().eq('id', id);
+
+    if (error) {
+      alert('Erreur lors de la suppression : ' + error.message);
+    } else {
+      setRecipes(recipes.filter((r) => r.id !== id));
+    }
   };
 
-  // --- Gestion du Planning ---
+  // --- PLANNING ---
   const handleMealSelect = (day, meal, recipeId) => {
     setPlanning((prev) => ({
       ...prev,
@@ -135,7 +146,7 @@ export default function App() {
     }));
   };
 
-  // --- Calcul de la liste de courses globale ---
+  // --- CALCUL PANIER DE COURSES ---
   const getShoppingList = () => {
     const totals = {};
 
@@ -163,7 +174,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-100 text-gray-800 flex flex-col">
       <header className="bg-emerald-600 text-white p-4 shadow-md text-center font-bold text-xl">
-        🥗 Mon Planificateur de Repas
+        🥗 Mon Planificateur de Repas Collaboratif
       </header>
 
       {/* Navigation */}
@@ -188,7 +199,7 @@ export default function App() {
         {activeTab === 'recipes' && (
           <div className="space-y-6">
             <form onSubmit={handleAddRecipe} className="bg-white p-4 rounded-xl shadow space-y-4">
-              <h2 className="text-lg font-bold text-emerald-700">Ajouter une recette</h2>
+              <h2 className="text-lg font-bold text-emerald-700">Ajouter une recette partagée</h2>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Nom du plat</label>
                 <input
@@ -236,99 +247,106 @@ export default function App() {
                 type="submit"
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg transition"
               >
-                Enregistrer la recette
+                Enregistrer dans la base partagée
               </button>
             </form>
 
             <div className="space-y-4">
-              <h2 className="text-lg font-bold text-gray-700">Mes Recettes ({recipes.length})</h2>
-              {recipes.map((recipe) => (
-                <div key={recipe.id} className="bg-white p-4 rounded-xl shadow border border-gray-100">
-                  {editingId === recipe.id ? (
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-lg font-bold"
-                      />
-                      <div className="space-y-2">
-                        {editIngredients.map((ing, i) => (
-                          <div key={i} className="flex gap-2 items-center">
-                            <input
-                              type="text"
-                              value={ing.name}
-                              onChange={(e) => handleEditIngredientChange(i, 'name', e.target.value)}
-                              className="flex-1 p-1 border rounded text-sm"
-                            />
-                            <input
-                              type="number"
-                              value={ing.quantity}
-                              onChange={(e) => handleEditIngredientChange(i, 'quantity', e.target.value)}
-                              className="w-20 p-1 border rounded text-sm"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeEditIngredientField(i)}
-                              className="text-red-500 font-bold px-2 text-sm"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={addEditIngredientField}
-                          className="text-xs text-emerald-600 font-semibold hover:underline"
-                        >
-                          + Ingrédient
-                        </button>
-                      </div>
-                      <div className="flex gap-2 pt-2">
-                        <button
-                          onClick={() => saveEdit(recipe.id)}
-                          className="flex-1 bg-emerald-600 text-white py-1 px-3 rounded text-sm font-semibold"
-                        >
-                          Valider
-                        </button>
-                        <button
-                          onClick={() => setEditingId(null)}
-                          className="bg-gray-200 text-gray-700 py-1 px-3 rounded text-sm font-semibold"
-                        >
-                          Annuler
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <h3 className="font-bold text-gray-800 text-md">{recipe.title}</h3>
-                        <div className="flex gap-2">
+              <h2 className="text-lg font-bold text-gray-700">Mes Recettes Partagées ({recipes.length})</h2>
+              {loading ? (
+                <p className="text-gray-500 text-sm">Chargement des recettes...</p>
+              ) : recipes.length === 0 ? (
+                <p className="text-gray-500 text-sm">Aucune recette trouvée. Ajoutez la première !</p>
+              ) : (
+                recipes.map((recipe) => (
+                  <div key={recipe.id} className="bg-white p-4 rounded-xl shadow border border-gray-100">
+                    {editingId === recipe.id ? (
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          className="w-full p-2 border border-gray-300 rounded-lg font-bold"
+                        />
+                        <div className="space-y-2">
+                          {editIngredients.map((ing, i) => (
+                            <div key={i} className="flex gap-2 items-center">
+                              <input
+                                type="text"
+                                value={ing.name}
+                                onChange={(e) => handleEditIngredientChange(i, 'name', e.target.value)}
+                                className="flex-1 p-1 border rounded text-sm"
+                              />
+                              <input
+                                type="number"
+                                value={ing.quantity}
+                                onChange={(e) => handleEditIngredientChange(i, 'quantity', e.target.value)}
+                                className="w-20 p-1 border rounded text-sm"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeEditIngredientField(i)}
+                                className="text-red-500 font-bold px-2 text-sm"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
                           <button
-                            onClick={() => startEditing(recipe)}
-                            className="text-sm text-blue-600 hover:underline"
+                            type="button"
+                            onClick={addEditIngredientField}
+                            className="text-xs text-emerald-600 font-semibold hover:underline"
                           >
-                            ✏️ Modifier
+                            + Ingrédient
+                          </button>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            onClick={() => saveEdit(recipe.id)}
+                            className="flex-1 bg-emerald-600 text-white py-1 px-3 rounded text-sm font-semibold"
+                          >
+                            Valider
                           </button>
                           <button
-                            onClick={() => deleteRecipe(recipe.id)}
-                            className="text-sm text-red-500 hover:underline"
+                            onClick={() => setEditingId(null)}
+                            className="bg-gray-200 text-gray-700 py-1 px-3 rounded text-sm font-semibold"
                           >
-                            🗑️ Supprimer
+                            Annuler
                           </button>
                         </div>
                       </div>
-                      <ul className="mt-2 text-sm text-gray-600 list-disc list-inside">
-                        {recipe.ingredients.map((ing, i) => (
-                          <li key={i}>
-                            {ing.name} : <span className="font-semibold">{ing.quantity}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    ) : (
+                      <div>
+                        <div className="flex justify-between items-start">
+                          <h3 className="font-bold text-gray-800 text-md">{recipe.title}</h3>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => startEditing(recipe)}
+                              className="text-sm text-blue-600 hover:underline"
+                            >
+                              ✏️ Modifier
+                            </button>
+                            <button
+                              onClick={() => deleteRecipe(recipe.id)}
+                              className="text-sm text-red-500 hover:underline"
+                            >
+                              🗑️ Supprimer
+                            </button>
+                          </div>
+                        </div>
+                        <ul className="mt-2 text-sm text-gray-600 list-disc list-inside">
+                          {recipe.ingredients &&
+                            recipe.ingredients.map((ing, i) => (
+                              <li key={i}>
+                                {ing.name} : <span className="font-semibold">{ing.quantity}</span>
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
