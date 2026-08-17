@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 
-const MAIN_CATEGORIES = ['Plats', 'Viandes et poissons', 'Accompagnements', 'Entrées', 'Desserts'];
+const MAIN_CATEGORIES = [
+  { name: 'Plats', image: '/plats.png' },
+  { name: 'Viandes et poissons', image: '/viandes_poissons.png' },
+  { name: 'Accompagnements', image: '/accompagnements.png' },
+  { name: 'Entrées', image: '/entrees.png' },
+  { name: 'Desserts', image: '/desserts.png' },
+];
 const SUB_CATEGORIES = {
   'Plats': ['Tous', 'Tartes & Quiches', 'Pâtes & Lasagnes', 'Mijotés'],
   'Viandes et poissons': ['Tous', 'Viande', 'Poisson', 'Volaille'],
@@ -304,21 +310,22 @@ export default function App() {
 
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
               {MAIN_CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => {
-                    setSelectedMainCat(cat);
-                    setSelectedSubCat('Tous');
-                  }}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-                    selectedMainCat === cat
-                      ? 'bg-emerald-600 text-white shadow'
-                      : 'bg-white text-slate-600 border border-slate-200'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+  <button
+    key={cat.name}
+    onClick={() => {
+      setSelectedMainCat(cat.name);
+      setSelectedSubCat('Tous');
+    }}
+    className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+      selectedMainCat === cat.name
+        ? 'bg-emerald-600 text-white shadow'
+        : 'bg-white text-slate-600 border border-slate-200'
+    }`}
+  >
+    <img src={cat.image} alt={cat.name} className="h-10 w-10 rounded-full mr-2" />
+    {cat.name}
+  </button>
+))}
             </div>
 
             {SUB_CATEGORIES[selectedMainCat] && (
