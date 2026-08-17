@@ -11,27 +11,27 @@ const MAIN_CATEGORIES = [
 
 const SUB_CATEGORIES = {
   'Plats': [
-    { name: 'Tous', image: '/icons/tous.png' },
-    { name: 'Tartes & Quiches', image: '/icons/tartes.png' },
-    { name: 'Pâtes & Lasagnes', image: '/icons/pates.png' },
-    { name: 'Mijotés', image: '/icons/mijotes.png' },
+    { name: 'Tous', image: '/tous.png' },
+    { name: 'Tartes & Quiches', image: '/tartes.png' },
+    { name: 'Pâtes & Lasagnes', image: '/pates.png' },
+    { name: 'Mijotés', image: '/mijotes.png' },
   ],
   'Viandes et poissons': [
-    { name: 'Tous', image: '/icons/tous.png' },
-    { name: 'Viande', image: '/icons/viande.png' },
-    { name: 'Poisson', image: '/icons/poisson.png' },
-    { name: 'Volaille', image: '/icons/volaille.png' },
+    { name: 'Tous', image: '/tous.png' },
+    { name: 'Viande', image: '/viande.png' },
+    { name: 'Poisson', image: '/poisson.png' },
+    { name: 'Volaille', image: '/volaille.png' },
   ],
   'Accompagnements': [
-    { name: 'Tous', image: '/icons/tous.png' },
-    { name: 'Légumes', image: '/icons/legumes.png' },
-    { name: 'Féculents', image: '/icons/feculents.png' },
+    { name: 'Tous', image: '/tous.png' },
+    { name: 'Légumes', image: '/legumes.png' },
+    { name: 'Féculents', image: '/feculents.png' },
   ],
   'Entrées': [
-    { name: 'Tous', image: '/icons/tous.png' },
+    { name: 'Tous', image: '/tous.png' },
   ],
   'Desserts': [
-    { name: 'Tous', image: '/icons/tous.png' },
+    { name: 'Tous', image: '/tous.png' },
   ],
 };
 
