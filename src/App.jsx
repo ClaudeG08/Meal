@@ -174,7 +174,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-100 text-gray-800 flex flex-col">
       <header className="bg-emerald-600 text-white p-4 shadow-md text-center font-bold text-xl">
-        🥗 Mon Planificateur de Repas Collaboratif
+        🥗 GILMEAL
       </header>
 
       {/* Navigation */}
