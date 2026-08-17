@@ -20,7 +20,6 @@ const DAYS = [
 ];
 
 export default function App() {
-  // Navigation principale
   const [activeTab, setActiveTab] = useState('recipes'); // 'recipes', 'planning', 'shopping'
 
   // --- ÉTATS RECETTES ---
@@ -28,23 +27,30 @@ export default function App() {
   const [selectedMainCat, setSelectedMainCat] = useState('Plats');
   const [selectedSubCat, setSelectedSubCat] = useState('Tous');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeRecipe, setActiveRecipe] = useState(null); // Recette ouverte dans la vue détail
-  const [recipeDetailTab, setRecipeDetailTab] = useState('ingredients'); // 'ingredients' ou 'instructions'
+  const [activeRecipe, setActiveRecipe] = useState(null);
+  const [recipeDetailTab, setRecipeDetailTab] = useState('ingredients');
+
+  // --- ÉTATS CRÉATION / ÉDITION ---
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [formTitle, setFormTitle] = useState('');
+  const [formCategory, setFormCategory] = useState('Plats');
+  const [formSubCategory, setFormSubCategory] = useState('Tartes & Quiches');
+  const [formIngredients, setFormIngredients] = useState([{ name: '', quantity: '' }]);
+  const [formInstructions, setFormInstructions] = useState('');
 
   // --- ÉTATS PLANNING (Dual: Lista + Agenda) ---
   const [plannedMeals, setPlannedMeals] = useState(() => {
     const saved = localStorage.getItem('planned_meals_v2');
-    return saved ? JSON.parse(saved) : []; 
-    // Structure: [{ id, recipeId, recipeTitle, guests: 2, dayId: null, slot: null }] (slot: 'M' ou 'S')
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [agenda, setAgenda] = useState(() => {
     const saved = localStorage.getItem('agenda_v2');
-    return saved ? JSON.parse(saved) : {}; 
-    // Format: { '1-M': plannedMealId, '1-S': plannedMealId }
+    return saved ? JSON.parse(saved) : {};
   });
 
-  const [planningSubTab, setPlanningSubTab] = useState('meals'); // 'meals' ou 'agenda'
+  const [planningSubTab, setPlanningSubTab] = useState('meals');
 
   useEffect(() => {
     localStorage.setItem('planned_meals_v2', JSON.stringify(plannedMeals));
@@ -54,7 +60,6 @@ export default function App() {
     localStorage.setItem('agenda_v2', JSON.stringify(agenda));
   }, [agenda]);
 
-  // --- CHARGEMENT SUPABASE ---
   useEffect(() => {
     fetchRecipes();
   }, []);
@@ -64,7 +69,87 @@ export default function App() {
     if (data) setRecipes(data);
   };
 
-  // --- FILTRAGE DES RECETTES ---
+  // --- GESTION DU FORMULAIRE ---
+  const openCreateForm = () => {
+    setEditingId(null);
+    setFormTitle('');
+    setFormCategory('Plats');
+    setFormSubCategory('Tartes & Quiches');
+    setFormIngredients([{ name: '', quantity: '' }]);
+    setFormInstructions('');
+    setIsFormOpen(true);
+  };
+
+  const openEditForm = (recipe) => {
+    setEditingId(recipe.id);
+    setFormTitle(recipe.title);
+    setFormCategory(recipe.category || 'Plats');
+    setFormSubCategory(recipe.subCategory || 'Tous');
+    setFormIngredients(
+      recipe.ingredients?.length > 0
+        ? JSON.parse(JSON.stringify(recipe.ingredients))
+        : [{ name: '', quantity: '' }]
+    );
+    setFormInstructions(recipe.instructions || '');
+    setIsFormOpen(true);
+  };
+
+  const handleIngredientChange = (index, field, value) => {
+    const updated = [...formIngredients];
+    updated[index][field] = value;
+    setFormIngredients(updated);
+  };
+
+  const addIngredientField = () => {
+    setFormIngredients([...formIngredients, { name: '', quantity: '' }]);
+  };
+
+  const removeIngredientField = (index) => {
+    setFormIngredients(formIngredients.filter((_, i) => i !== index));
+  };
+
+  const handleSaveRecipe = async (e) => {
+    e.preventDefault();
+    if (!formTitle.trim()) return;
+
+    const filteredIngs = formIngredients.filter((ing) => ing.name.trim() !== '');
+
+    const recipeData = {
+      title: formTitle,
+      category: formCategory,
+      subCategory: formSubCategory,
+      ingredients: filteredIngs,
+      instructions: formInstructions,
+    };
+
+    if (editingId) {
+      const { error } = await supabase.from('recipes').update(recipeData).eq('id', editingId);
+      if (!error) {
+        setRecipes(recipes.map((r) => (r.id === editingId ? { ...r, ...recipeData } : r)));
+        if (activeRecipe?.id === editingId) {
+          setActiveRecipe({ ...activeRecipe, ...recipeData });
+        }
+      }
+    } else {
+      const { data, error } = await supabase.from('recipes').insert([recipeData]).select();
+      if (!error && data) {
+        setRecipes([data[0], ...recipes]);
+      }
+    }
+
+    setIsFormOpen(false);
+  };
+
+  const deleteRecipe = async (id) => {
+    if (!window.confirm('Voulez-vous vraiment supprimer cette recette ?')) return;
+    const { error } = await supabase.from('recipes').delete().eq('id', id);
+    if (!error) {
+      setRecipes(recipes.filter((r) => r.id !== id));
+      setActiveRecipe(null);
+    }
+  };
+
+  // --- FILTRAGE ---
   const filteredRecipes = recipes.filter((r) => {
     const matchMain = (r.category || 'Plats') === selectedMainCat;
     const matchSub = selectedSubCat === 'Tous' || r.subCategory === selectedSubCat;
@@ -72,7 +157,7 @@ export default function App() {
     return matchMain && matchSub && matchSearch;
   });
 
-  // --- ACTIONS PLANNING ---
+  // --- PLANNING & COURSES ---
   const addRecipeToPlanning = (recipe) => {
     const newItem = {
       id: Date.now(),
@@ -89,13 +174,9 @@ export default function App() {
 
   const updateGuests = (id, delta) => {
     setPlannedMeals(
-      plannedMeals.map((item) => {
-        if (item.id === id) {
-          const newQty = Math.max(1, item.guests + delta);
-          return { ...item, guests: newQty };
-        }
-        return item;
-      })
+      plannedMeals.map((item) =>
+        item.id === id ? { ...item, guests: Math.max(1, item.guests + delta) } : item
+      )
     );
   };
 
@@ -103,22 +184,17 @@ export default function App() {
     const key = `${dayId}-${slot}`;
     setAgenda((prev) => ({ ...prev, [key]: mealId ? Number(mealId) : null }));
 
-    // Mettre à jour le statut du repas
     setPlannedMeals((prev) =>
-      prev.map((meal) => {
-        if (meal.id === Number(mealId)) {
-          return { ...meal, assignedDay: dayId, assignedSlot: slot };
-        }
-        return meal;
-      })
+      prev.map((meal) =>
+        meal.id === Number(mealId) ? { ...meal, assignedDay: dayId, assignedSlot: slot } : meal
+      )
     );
   };
 
-  // --- CALCUL DE LA LISTE DE COURSES ---
   const getShoppingList = () => {
     const totals = {};
     plannedMeals.forEach((meal) => {
-      const ratio = meal.guests / 2; // Ratio basé sur 2 personnes de base
+      const ratio = meal.guests / 2;
       meal.ingredients.forEach((ing) => {
         const key = ing.name.toLowerCase().trim();
         const qty = (Number(ing.quantity) || 0) * ratio;
@@ -137,7 +213,7 @@ export default function App() {
       {/* BARRE DE NAVIGATION EN HAUT */}
       <header className="bg-emerald-700 text-white shadow-md sticky top-0 z-30">
         <div className="max-w-2xl mx-auto flex justify-between items-center p-3">
-          <h1 className="font-bold text-lg tracking-wide">🥗 Popote & Co</h1>
+          <h1 className="font-bold text-lg tracking-wide">🥗 Gilmeal</h1>
           <nav className="flex gap-1 bg-emerald-800/50 p-1 rounded-xl">
             <button
               onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
@@ -173,6 +249,17 @@ export default function App() {
         {/* ========================================================= */}
         {activeTab === 'recipes' && !activeRecipe && (
           <div className="space-y-4">
+            {/* Bouton Créer une recette */}
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-bold text-slate-800">Catalogue</h2>
+              <button
+                onClick={openCreateForm}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition"
+              >
+                + Nouvelle Recette
+              </button>
+            </div>
+
             {/* Niveau 1 : Catégories Principales */}
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
               {MAIN_CATEGORIES.map((cat) => (
@@ -241,15 +328,31 @@ export default function App() {
           </div>
         )}
 
-        {/* --- DÉTAIL D'UNE RECETTE SELECTIONNÉE --- */}
+        {/* --- DÉTAIL D'UNE RECETTE SÉLECTIONNÉE --- */}
         {activeTab === 'recipes' && activeRecipe && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
-            <button
-              onClick={() => setActiveRecipe(null)}
-              className="text-xs font-bold text-slate-500 hover:text-slate-800"
-            >
-              ⬅ Retour aux recettes
-            </button>
+            <div className="flex justify-between items-center">
+              <button
+                onClick={() => setActiveRecipe(null)}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800"
+              >
+                ⬅ Retour aux recettes
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => openEditForm(activeRecipe)}
+                  className="text-xs text-blue-600 font-bold hover:underline"
+                >
+                  ✏️ Modifier
+                </button>
+                <button
+                  onClick={() => deleteRecipe(activeRecipe.id)}
+                  className="text-xs text-red-500 font-bold hover:underline"
+                >
+                  🗑️ Supprimer
+                </button>
+              </div>
+            </div>
 
             <div className="flex justify-between items-center border-b pb-3">
               <h2 className="text-xl font-bold text-slate-800">{activeRecipe.title}</h2>
@@ -261,7 +364,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* Onglets Fiche Recette : Ingrédients / Instructions */}
+            {/* Onglets Fiche Recette */}
             <div className="flex border-b border-slate-200">
               <button
                 onClick={() => setRecipeDetailTab('ingredients')}
@@ -302,12 +405,145 @@ export default function App() {
           </div>
         )}
 
+        {/* --- MODALE FORMULAIRE DE CRÉATION / ÉDITION --- */}
+        {isFormOpen && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl p-5 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4">
+              <div className="flex justify-between items-center border-b pb-2">
+                <h3 className="font-bold text-slate-800 text-lg">
+                  {editingId ? 'Modifier la recette' : 'Créer une recette'}
+                </h3>
+                <button onClick={() => setIsFormOpen(false)} className="text-slate-400 font-bold">
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveRecipe} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                    Titre
+                  </label>
+                  <input
+                    type="text"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                      Catégorie
+                    </label>
+                    <select
+                      value={formCategory}
+                      onChange={(e) => {
+                        setFormCategory(e.target.value);
+                        setFormSubCategory(SUB_CATEGORIES[e.target.value]?.[0] || 'Tous');
+                      }}
+                      className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
+                    >
+                      {MAIN_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                      Sous-Catégorie
+                    </label>
+                    <select
+                      value={formSubCategory}
+                      onChange={(e) => setFormSubCategory(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
+                    >
+                      {SUB_CATEGORIES[formCategory]?.map((sc) => (
+                        <option key={sc} value={sc}>{sc}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                    Ingrédients
+                  </label>
+                  {formIngredients.map((ing, i) => (
+                    <div key={i} className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        placeholder="Ingrédient"
+                        value={ing.name}
+                        onChange={(e) => handleIngredientChange(i, 'name', e.target.value)}
+                        className="flex-1 p-2 border border-slate-200 rounded-lg text-sm"
+                      />
+                      <input
+                        type="number"
+                        placeholder="Qté"
+                        value={ing.quantity}
+                        onChange={(e) => handleIngredientChange(i, 'quantity', e.target.value)}
+                        className="w-20 p-2 border border-slate-200 rounded-lg text-sm"
+                      />
+                      {formIngredients.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeIngredientField(i)}
+                          className="text-red-500 font-bold px-1"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addIngredientField}
+                    className="text-xs font-bold text-emerald-600 hover:underline"
+                  >
+                    + Ajouter un ingrédient
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                    Étapes de préparation (Optionnel)
+                  </label>
+                  <textarea
+                    rows="3"
+                    value={formInstructions}
+                    onChange={(e) => setFormInstructions(e.target.value)}
+                    placeholder="Émietter le thon, couper les tomates..."
+                    className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                  ></textarea>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-xl text-sm"
+                  >
+                    Enregistrer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsFormOpen(false)}
+                    className="bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-xl text-sm"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* ========================================================= */}
         {/* 2. SECTION PLANNING (Liste des repas & Agenda)           */}
         {/* ========================================================= */}
         {activeTab === 'planning' && (
           <div className="space-y-4">
-            {/* Sous-Onglets : Liste des repas / Agenda */}
             <div className="flex bg-slate-200 p-1 rounded-xl">
               <button
                 onClick={() => setPlanningSubTab('meals')}
@@ -327,7 +563,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* --- VUE A : LISTE DES REPAS --- */}
             {planningSubTab === 'meals' && (
               <div className="space-y-3">
                 {plannedMeals.length === 0 ? (
@@ -355,18 +590,17 @@ export default function App() {
                         </span>
                       </div>
 
-                      {/* Compteur Nombre de Personnes */}
                       <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
                         <button
                           onClick={() => updateGuests(meal.id, -1)}
-                          className="w-6 h-6 bg-white rounded font-bold text-slate-600 shadow-xs text-xs"
+                          className="w-6 h-6 bg-white rounded font-bold text-slate-600 text-xs"
                         >
                           -
                         </button>
                         <span className="text-xs font-bold text-slate-700">{meal.guests} pers</span>
                         <button
                           onClick={() => updateGuests(meal.id, 1)}
-                          className="w-6 h-6 bg-white rounded font-bold text-slate-600 shadow-xs text-xs"
+                          className="w-6 h-6 bg-white rounded font-bold text-slate-600 text-xs"
                         >
                           +
                         </button>
@@ -377,7 +611,6 @@ export default function App() {
               </div>
             )}
 
-            {/* --- VUE B : AGENDA (Grille 6 jours - Midi / Soir) --- */}
             {planningSubTab === 'agenda' && (
               <div className="grid gap-3">
                 {DAYS.map((day) => (
