@@ -217,7 +217,7 @@ export default function App() {
 
   const removePlannedMeal = (id) => {
     setPlannedMeals(plannedMeals.filter((m) => m.id !== id));
-    
+
     const updatedAgenda = { ...agenda };
     Object.keys(updatedAgenda).forEach((key) => {
       if (updatedAgenda[key] === id) {
@@ -266,26 +266,23 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans relative">
-      {/* 1. BANNIÈRE SUPÉRIEURE (SANS LA NAVIGATION) */}
+      {/* 1. BANNIÈRE SUPÉRIEURE */}
       <header className="relative bg-emerald-800 bg-[url('/banner.jpg')] bg-cover bg-center text-white shadow-md h-20 flex items-center justify-center">
-        {/* Voile d'assombrissement léger */}
         <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
-
-        {/* Logo centré */}
-        <div 
-          className="relative flex items-center cursor-pointer" 
+        <div
+          className="relative flex items-center cursor-pointer"
           onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
         >
-          <img 
-            src="/logo.png" 
-            alt="Logo" 
+          <img
+            src="/logo.png"
+            alt="Logo"
             className="h-14 w-auto object-contain drop-shadow-md rounded-xl"
             onError={(e) => { e.target.style.display = 'none'; }}
           />
         </div>
       </header>
 
-      {/* CONTENU PRINCIPAL (avec marge en bas pb-24 pour laisser passer le menu) */}
+      {/* CONTENU PRINCIPAL */}
       <main className="flex-1 p-4 max-w-2xl mx-auto w-full pb-24">
         {/* ========================================================= */}
         {/* SECTION RECETTES                                         */}
@@ -769,28 +766,22 @@ export default function App() {
         )}
 
         {/* ========================================================= */}
-        {/* SECTION PANIER / COURSES                                 */}
+        {/* SECTION LISTE DE COURSES                                 */}
         {/* ========================================================= */}
         {activeTab === 'shopping' && (
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-            <h2 className="text-lg font-bold text-slate-800">🛒 Liste de courses finale</h2>
+            <h2 className="text-lg font-bold text-slate-800 border-b pb-2">🛒 Liste de courses</h2>
             {getShoppingList().length === 0 ? (
-              <p className="text-slate-400 text-sm">
-                Aucun ingrédient dans le panier. Ajoutez des recettes au planning.
+              <p className="text-center text-slate-400 py-6 text-sm">
+                Votre liste est vide. Ajoutez des recettes à votre planning.
               </p>
             ) : (
               <ul className="divide-y divide-slate-100">
                 {getShoppingList().map((item, index) => (
-                  <li key={index} className="py-2.5 flex items-center justify-between">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 border-slate-300"
-                      />
-                      <span className="text-slate-700 capitalize text-sm font-medium">{item.name}</span>
-                    </label>
-                    <span className="bg-emerald-50 text-emerald-700 font-bold text-xs px-2.5 py-1 rounded-full">
-                      x {Math.round(item.quantity * 10) / 10}
+                  <li key={index} className="py-2.5 flex justify-between items-center text-sm">
+                    <span className="capitalize text-slate-700">{item.name}</span>
+                    <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg text-xs">
+                      {Math.round(item.quantity * 10) / 10}
                     </span>
                   </li>
                 ))}
@@ -800,41 +791,40 @@ export default function App() {
         )}
       </main>
 
-      {/* 2. BARRE DE NAVIGATION FLOTTANTE EN BAS AU CENTRE */}
-      <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
-        <nav className="pointer-events-auto flex gap-2 bg-slate-900/90 backdrop-blur-md p-2 rounded-2xl border border-white/20 shadow-2xl">
-          <button
-            onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
-              activeTab === 'recipes' 
-                ? 'bg-emerald-600 text-white shadow-lg' 
-                : 'text-slate-300 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            📖 Recettes
-          </button>
-          <button
-            onClick={() => setActiveTab('planning')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
-              activeTab === 'planning' 
-                ? 'bg-emerald-600 text-white shadow-lg' 
-                : 'text-slate-300 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            📅 Planning
-          </button>
-          <button
-            onClick={() => setActiveTab('shopping')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
-              activeTab === 'shopping' 
-                ? 'bg-emerald-600 text-white shadow-lg' 
-                : 'text-slate-300 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            🛒 Panier
-          </button>
-        </nav>
-      </div>
+      {/* ========================================================= */}
+      {/* BARRE DE NAVIGATION INFÉRIEURE FIXE                       */}
+      {/* ========================================================= */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around items-center h-16 z-40 max-w-2xl mx-auto shadow-lg">
+        <button
+          onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
+          className={`flex flex-col items-center gap-1 text-xs font-bold transition ${
+            activeTab === 'recipes' ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <span className="text-lg">📖</span>
+          <span>Recettes</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('planning')}
+          className={`flex flex-col items-center gap-1 text-xs font-bold transition ${
+            activeTab === 'planning' ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <span className="text-lg">📅</span>
+          <span>Planning</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('shopping')}
+          className={`flex flex-col items-center gap-1 text-xs font-bold transition ${
+            activeTab === 'shopping' ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <span className="text-lg">🛒</span>
+          <span>Courses</span>
+        </button>
+      </nav>
     </div>
   );
 }
