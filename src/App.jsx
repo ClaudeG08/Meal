@@ -8,12 +8,31 @@ const MAIN_CATEGORIES = [
   { name: 'Entrées', image: '/entrees.png' },
   { name: 'Desserts', image: '/desserts.png' },
 ];
+
 const SUB_CATEGORIES = {
-  'Plats': ['Tous', 'Tartes & Quiches', 'Pâtes & Lasagnes', 'Mijotés'],
-  'Viandes et poissons': ['Tous', 'Viande', 'Poisson', 'Volaille'],
-  'Accompagnements': ['Tous', 'Légumes', 'Féculents'],
-  'Entrées': ['Tous'],
-  'Desserts': ['Tous'],
+  'Plats': [
+    { name: 'Tous', image: '/icons/tous.png' },
+    { name: 'Tartes & Quiches', image: '/icons/tartes.png' },
+    { name: 'Pâtes & Lasagnes', image: '/icons/pates.png' },
+    { name: 'Mijotés', image: '/icons/mijotes.png' },
+  ],
+  'Viandes et poissons': [
+    { name: 'Tous', image: '/icons/tous.png' },
+    { name: 'Viande', image: '/icons/viande.png' },
+    { name: 'Poisson', image: '/icons/poisson.png' },
+    { name: 'Volaille', image: '/icons/volaille.png' },
+  ],
+  'Accompagnements': [
+    { name: 'Tous', image: '/icons/tous.png' },
+    { name: 'Légumes', image: '/icons/legumes.png' },
+    { name: 'Féculents', image: '/icons/feculents.png' },
+  ],
+  'Entrées': [
+    { name: 'Tous', image: '/icons/tous.png' },
+  ],
+  'Desserts': [
+    { name: 'Tous', image: '/icons/tous.png' },
+  ],
 };
 
 export default function App() {
@@ -113,7 +132,8 @@ export default function App() {
     setEditingId(null);
     setFormTitle('');
     setFormCategory('Plats');
-    setFormSubCategory('Tartes & Quiches');
+    const firstSub = SUB_CATEGORIES['Plats']?.[0]?.name || 'Tous';
+    setFormSubCategory(firstSub);
     setFormServings(4);
     setFormIngredients([{ name: '', quantity: '' }]);
     setFormInstructions('');
@@ -272,12 +292,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans relative">
-      {/* 1. BANNIÈRE SUPÉRIEURE (SANS LA NAVIGATION) */}
+      {/* BANNIÈRE SUPÉRIEURE */}
       <header className="relative bg-emerald-800 bg-[url('/banner.jpg')] bg-cover bg-center text-white shadow-md h-20 flex items-center justify-center">
-        {/* Voile d'assombrissement léger */}
         <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
-
-        {/* Logo centré */}
         <div 
           className="relative flex items-center cursor-pointer" 
           onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
@@ -291,11 +308,9 @@ export default function App() {
         </div>
       </header>
 
-      {/* CONTENU PRINCIPAL (avec marge en bas pb-24 pour laisser passer le menu) */}
+      {/* CONTENU PRINCIPAL */}
       <main className="flex-1 p-4 max-w-2xl mx-auto w-full pb-24">
-        {/* ========================================================= */}
-        {/* SECTION RECETTES                                         */}
-        {/* ========================================================= */}
+        {/* SECTION RECETTES */}
         {activeTab === 'recipes' && !activeRecipe && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -308,6 +323,7 @@ export default function App() {
               </button>
             </div>
 
+            {/* FILTRE CATÉGORIES PRINCIPALES */}
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
               {MAIN_CATEGORIES.map((cat) => {
                 const isSelected = selectedMainCat === cat.name;
@@ -328,6 +344,7 @@ export default function App() {
                       src={cat.image}
                       alt={cat.name}
                       className="w-10 h-10 object-contain mb-1.5"
+                      onError={(e) => { e.target.style.display = 'none'; }}
                     />
                     <span className="text-center line-clamp-1">{cat.name}</span>
                   </button>
@@ -335,21 +352,33 @@ export default function App() {
               })}
             </div>
 
+            {/* FILTRE SOUS-CATÉGORIES AVEC IMAGES */}
             {SUB_CATEGORIES[selectedMainCat] && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {SUB_CATEGORIES[selectedMainCat].map((sub) => (
-                  <button
-                    key={sub}
-                    onClick={() => setSelectedSubCat(sub)}
-                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-                      selectedSubCat === sub
-                        ? 'bg-slate-800 text-white'
-                        : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                    }`}
-                  >
-                    {sub}
-                  </button>
-                ))}
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                {SUB_CATEGORIES[selectedMainCat].map((sub) => {
+                  const isSelected = selectedSubCat === sub.name;
+                  return (
+                    <button
+                      key={sub.name}
+                      onClick={() => setSelectedSubCat(sub.name)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                        isSelected
+                          ? 'bg-slate-800 text-white shadow-sm'
+                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                      }`}
+                    >
+                      {sub.image && (
+                        <img
+                          src={sub.image}
+                          alt={sub.name}
+                          className="w-4 h-4 object-contain"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      )}
+                      <span>{sub.name}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -385,7 +414,7 @@ export default function App() {
           </div>
         )}
 
-        {/* --- DÉTAIL RECETTES --- */}
+        {/* DÉTAIL RECETTE */}
         {activeTab === 'recipes' && activeRecipe && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
             <div className="flex justify-between items-center">
@@ -496,7 +525,7 @@ export default function App() {
           </div>
         )}
 
-        {/* --- MODALE FORMULAIRE --- */}
+        {/* MODALE FORMULAIRE */}
         {isFormOpen && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl p-5 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4">
@@ -527,8 +556,10 @@ export default function App() {
                     <select
                       value={formCategory}
                       onChange={(e) => {
-                        setFormCategory(e.target.value);
-                        setFormSubCategory(SUB_CATEGORIES[e.target.value]?.[0] || 'Tous');
+                        const newCat = e.target.value;
+                        setFormCategory(newCat);
+                        const firstSub = SUB_CATEGORIES[newCat]?.[0]?.name || 'Tous';
+                        setFormSubCategory(firstSub);
                       }}
                       className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
                     >
@@ -546,7 +577,7 @@ export default function App() {
                       className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
                     >
                       {SUB_CATEGORIES[formCategory]?.map((sc) => (
-                        <option key={sc} value={sc}>{sc}</option>
+                        <option key={sc.name} value={sc.name}>{sc.name}</option>
                       ))}
                     </select>
                   </div>
@@ -636,9 +667,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* SECTION PLANNING                                         */}
-        {/* ========================================================= */}
+        {/* SECTION PLANNING */}
         {activeTab === 'planning' && (
           <div className="space-y-4">
             <div className="flex bg-slate-200 p-1 rounded-xl">
@@ -782,9 +811,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* SECTION PANIER / COURSES                                 */}
-        {/* ========================================================= */}
+        {/* SECTION PANIER / COURSES */}
         {activeTab === 'shopping' && (
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <h2 className="text-lg font-bold text-slate-800">🛒 Liste de courses finale</h2>
@@ -814,7 +841,7 @@ export default function App() {
         )}
       </main>
 
-      {/* 2. BARRE DE NAVIGATION FLOTTANTE EN BAS AU CENTRE */}
+      {/* BARRE DE NAVIGATION FLOTTANTE */}
       <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
         <nav className="pointer-events-auto flex gap-2 bg-slate-900/90 backdrop-blur-md p-2 rounded-2xl border border-white/20 shadow-2xl">
           <button
