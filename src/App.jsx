@@ -266,20 +266,16 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans relative">
-      {/* 1. BANNIÈRE SUPÉRIEURE */}
-      <header className="relative bg-emerald-800 bg-[url('/banner.jpg')] bg-cover bg-center text-white shadow-md h-20 flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
-        <div
-          className="relative flex items-center cursor-pointer"
-          onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
-        >
-          <img
-            src="/logo.png"
-            alt="Logo"
-            className="h-14 w-auto object-contain drop-shadow-md rounded-xl"
-            onError={(e) => { e.target.style.display = 'none'; }}
-          />
-        </div>
+      {/* 1. BANDEAU SUPÉRIEUR IMAGE */}
+      <header 
+        className="w-full bg-slate-200 overflow-hidden shadow-md cursor-pointer"
+        onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
+      >
+        <img
+          src="/banner.png"
+          alt="Bandeau"
+          className="w-full h-28 sm:h-36 object-cover object-center block"
+        />
       </header>
 
       {/* CONTENU PRINCIPAL */}
