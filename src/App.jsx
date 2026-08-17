@@ -265,56 +265,30 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans">
-      {/* BARRE DE NAVIGATION EN IMAGE + HAUTEUR AGRANDIE */}
-      <header className="relative bg-emerald-800 bg-[url('/banner.jpg')] bg-cover bg-center text-white shadow-lg sticky top-0 z-30 h-20 flex items-center">
-        {/* Calque d'assombrissement pour garder les boutons très lisibles */}
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"></div>
+    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans relative">
+      {/* 1. BANNIÈRE SUPÉRIEURE (SANS LA NAVIGATION) */}
+      <header className="relative bg-emerald-800 bg-[url('/banner.jpg')] bg-cover bg-center text-white shadow-md h-20 flex items-center justify-center">
+        {/* Voile d'assombrissement léger */}
+        <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
 
-        <div className="relative max-w-2xl mx-auto w-full flex justify-between items-center px-4">
-          {/* Logo seul (sans le texte Popote & Co) */}
-          <div className="flex items-center cursor-pointer" onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}>
-            <img 
-              src="/logo.png" 
-              alt="Logo" 
-              className="h-14 w-auto object-contain drop-shadow-md rounded-xl"
-              onError={(e) => { e.target.style.display = 'none'; }}
-            />
-          </div>
-
-          {/* Navigation récente et bien centrée */}
-          <nav className="flex gap-1.5 bg-black/40 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 shadow-inner">
-            <button
-              onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
-                activeTab === 'recipes' ? 'bg-white text-emerald-900 shadow' : 'text-white hover:bg-white/20'
-              }`}
-            >
-              Recettes
-            </button>
-            <button
-              onClick={() => setActiveTab('planning')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
-                activeTab === 'planning' ? 'bg-white text-emerald-900 shadow' : 'text-white hover:bg-white/20'
-              }`}
-            >
-              Planning
-            </button>
-            <button
-              onClick={() => setActiveTab('shopping')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
-                activeTab === 'shopping' ? 'bg-white text-emerald-900 shadow' : 'text-white hover:bg-white/20'
-              }`}
-            >
-              Panier
-            </button>
-          </nav>
+        {/* Logo centré */}
+        <div 
+          className="relative flex items-center cursor-pointer" 
+          onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
+        >
+          <img 
+            src="/logo.png" 
+            alt="Logo" 
+            className="h-14 w-auto object-contain drop-shadow-md rounded-xl"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
         </div>
       </header>
 
-      <main className="flex-1 p-4 max-w-2xl mx-auto w-full">
+      {/* CONTENU PRINCIPAL (avec marge en bas pb-24 pour laisser passer le menu) */}
+      <main className="flex-1 p-4 max-w-2xl mx-auto w-full pb-24">
         {/* ========================================================= */}
-        {/* 1. SECTION RECETTES                                      */}
+        {/* SECTION RECETTES                                         */}
         {/* ========================================================= */}
         {activeTab === 'recipes' && !activeRecipe && (
           <div className="space-y-4">
@@ -649,7 +623,7 @@ export default function App() {
         )}
 
         {/* ========================================================= */}
-        {/* 2. SECTION PLANNING                                      */}
+        {/* SECTION PLANNING                                         */}
         {/* ========================================================= */}
         {activeTab === 'planning' && (
           <div className="space-y-4">
@@ -795,7 +769,7 @@ export default function App() {
         )}
 
         {/* ========================================================= */}
-        {/* 3. SECTION PANIER / COURSES                               */}
+        {/* SECTION PANIER / COURSES                                 */}
         {/* ========================================================= */}
         {activeTab === 'shopping' && (
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
@@ -825,6 +799,42 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* 2. BARRE DE NAVIGATION FLOTTANTE EN BAS AU CENTRE */}
+      <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+        <nav className="pointer-events-auto flex gap-2 bg-slate-900/90 backdrop-blur-md p-2 rounded-2xl border border-white/20 shadow-2xl">
+          <button
+            onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+              activeTab === 'recipes' 
+                ? 'bg-emerald-600 text-white shadow-lg' 
+                : 'text-slate-300 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            📖 Recettes
+          </button>
+          <button
+            onClick={() => setActiveTab('planning')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+              activeTab === 'planning' 
+                ? 'bg-emerald-600 text-white shadow-lg' 
+                : 'text-slate-300 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            📅 Planning
+          </button>
+          <button
+            onClick={() => setActiveTab('shopping')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+              activeTab === 'shopping' 
+                ? 'bg-emerald-600 text-white shadow-lg' 
+                : 'text-slate-300 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            🛒 Panier
+          </button>
+        </nav>
+      </div>
     </div>
   );
 }
