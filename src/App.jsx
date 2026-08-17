@@ -114,6 +114,7 @@ export default function App() {
 
     const filteredIngs = formIngredients.filter((ing) => ing.name.trim() !== '');
 
+    // Objet avec données de base sécurisées
     const recipeData = {
       title: formTitle,
       category: formCategory,
@@ -124,15 +125,23 @@ export default function App() {
 
     if (editingId) {
       const { error } = await supabase.from('recipes').update(recipeData).eq('id', editingId);
-      if (!error) {
-        setRecipes(recipes.map((r) => (r.id === editingId ? { ...r, ...recipeData } : r)));
-        if (activeRecipe?.id === editingId) {
-          setActiveRecipe({ ...activeRecipe, ...recipeData });
-        }
+      if (error) {
+        console.error('Erreur Supabase Update:', error);
+        alert(`Erreur lors de la modification : ${error.message}`);
+        return;
+      }
+      setRecipes(recipes.map((r) => (r.id === editingId ? { ...r, ...recipeData } : r)));
+      if (activeRecipe?.id === editingId) {
+        setActiveRecipe({ ...activeRecipe, ...recipeData });
       }
     } else {
       const { data, error } = await supabase.from('recipes').insert([recipeData]).select();
-      if (!error && data) {
+      if (error) {
+        console.error('Erreur Supabase Insert:', error);
+        alert(`Erreur lors de la création : ${error.message}`);
+        return;
+      }
+      if (data) {
         setRecipes([data[0], ...recipes]);
       }
     }
