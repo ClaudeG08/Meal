@@ -309,31 +309,31 @@ export default function App() {
             </div>
 
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-  {MAIN_CATEGORIES.map((cat) => {
-    const isSelected = selectedMainCat === cat.name;
-    return (
-      <button
-        key={cat.name}
-        onClick={() => {
-          setSelectedMainCat(cat.name);
-          setSelectedSubCat('Tous');
-        }}
-        className={`flex flex-col items-center justify-center min-w-[135px] p-2.5 rounded-2xl text-xs font-bold transition-all ${
-          isSelected
-            ? 'bg-emerald-600 text-white shadow-md scale-105'
-            : 'bg-white text-slate-700 border border-slate-200 hover:border-emerald-300'
-        }`}
-      >
-        <img
-          src={cat.image}
-          alt={cat.name}
-          className="w-10 h-10 object-contain mb-1.5"
-        />
-        <span className="text-center line-clamp-1">{cat.name}</span>
-      </button>
-    );
-  })}
-</div>
+              {MAIN_CATEGORIES.map((cat) => {
+                const isSelected = selectedMainCat === cat.name;
+                return (
+                  <button
+                    key={cat.name}
+                    onClick={() => {
+                      setSelectedMainCat(cat.name);
+                      setSelectedSubCat('Tous');
+                    }}
+                    className={`flex flex-col items-center justify-center min-w-[135px] p-2.5 rounded-2xl text-xs font-bold transition-all ${
+                      isSelected
+                        ? 'bg-emerald-600 text-white shadow-md scale-105'
+                        : 'bg-white text-slate-700 border border-slate-200 hover:border-emerald-300'
+                    }`}
+                  >
+                    <img
+                      src={cat.image}
+                      alt={cat.name}
+                      className="w-10 h-10 object-contain mb-1.5"
+                    />
+                    <span className="text-center line-clamp-1">{cat.name}</span>
+                  </button>
+                );
+              })}
+            </div>
 
             {SUB_CATEGORIES[selectedMainCat] && (
               <div className="flex gap-2 overflow-x-auto pb-1">
@@ -533,7 +533,7 @@ export default function App() {
                       className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
                     >
                       {MAIN_CATEGORIES.map((c) => (
-                        <option key={c} value={c}>{c}</option>
+                        <option key={c.name} value={c.name}>{c.name}</option>
                       ))}
                     </select>
                   </div>
