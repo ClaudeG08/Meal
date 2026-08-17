@@ -20,7 +20,7 @@ const DAYS = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('recipes'); // 'recipes', 'planning', 'shopping'
+  const [activeTab, setActiveTab] = useState('recipes');
 
   // --- ÉTATS RECETTES ---
   const [recipes, setRecipes] = useState([]);
@@ -36,8 +36,12 @@ export default function App() {
   const [formTitle, setFormTitle] = useState('');
   const [formCategory, setFormCategory] = useState('Plats');
   const [formSubCategory, setFormSubCategory] = useState('Tartes & Quiches');
+  const [formServings, setFormServings] = useState(4); // Nombre de personnes de base
   const [formIngredients, setFormIngredients] = useState([{ name: '', quantity: '' }]);
   const [formInstructions, setFormInstructions] = useState('');
+
+  // --- ÉTATS SELECTION NOMBRE DE PERSONNES ---
+  const [selectedGuests, setSelectedGuests] = useState(4);
 
   // --- ÉTATS PLANNING (Dual: Lista + Agenda) ---
   const [plannedMeals, setPlannedMeals] = useState(() => {
@@ -69,12 +73,20 @@ export default function App() {
     if (data) setRecipes(data);
   };
 
-  // --- GESTION DU FORMULAIRE ---
+  // Synchronise le sélecteur de personnes quand on ouvre une fiche
+  useEffect(() => {
+    if (activeRecipe) {
+      setSelectedGuests(activeRecipe.servings || 4);
+    }
+  }, [activeRecipe]);
+
+  // --- FORMULAIRE ---
   const openCreateForm = () => {
     setEditingId(null);
     setFormTitle('');
     setFormCategory('Plats');
     setFormSubCategory('Tartes & Quiches');
+    setFormServings(4);
     setFormIngredients([{ name: '', quantity: '' }]);
     setFormInstructions('');
     setIsFormOpen(true);
@@ -85,6 +97,7 @@ export default function App() {
     setFormTitle(recipe.title);
     setFormCategory(recipe.category || 'Plats');
     setFormSubCategory(recipe.subCategory || 'Tous');
+    setFormServings(recipe.servings || 4);
     setFormIngredients(
       recipe.ingredients?.length > 0
         ? JSON.parse(JSON.stringify(recipe.ingredients))
@@ -114,11 +127,11 @@ export default function App() {
 
     const filteredIngs = formIngredients.filter((ing) => ing.name.trim() !== '');
 
-    // Objet avec données de base sécurisées
     const recipeData = {
       title: formTitle,
       category: formCategory,
       subCategory: formSubCategory,
+      servings: Number(formServings) || 4,
       ingredients: filteredIngs,
       instructions: formInstructions,
     };
@@ -126,7 +139,6 @@ export default function App() {
     if (editingId) {
       const { error } = await supabase.from('recipes').update(recipeData).eq('id', editingId);
       if (error) {
-        console.error('Erreur Supabase Update:', error);
         alert(`Erreur lors de la modification : ${error.message}`);
         return;
       }
@@ -137,7 +149,6 @@ export default function App() {
     } else {
       const { data, error } = await supabase.from('recipes').insert([recipeData]).select();
       if (error) {
-        console.error('Erreur Supabase Insert:', error);
         alert(`Erreur lors de la création : ${error.message}`);
         return;
       }
@@ -172,13 +183,14 @@ export default function App() {
       id: Date.now(),
       recipeId: recipe.id,
       recipeTitle: recipe.title,
+      baseServings: recipe.servings || 4,
       ingredients: recipe.ingredients || [],
-      guests: 2,
+      guests: selectedGuests,
       assignedDay: null,
       assignedSlot: null,
     };
     setPlannedMeals([...plannedMeals, newItem]);
-    alert(`"${recipe.title}" a été ajouté à la liste des repas !`);
+    alert(`"${recipe.title}" (${selectedGuests} pers.) ajouté au panier !`);
   };
 
   const updateGuests = (id, delta) => {
@@ -203,7 +215,8 @@ export default function App() {
   const getShoppingList = () => {
     const totals = {};
     plannedMeals.forEach((meal) => {
-      const ratio = meal.guests / 2;
+      const baseServings = meal.baseServings || 4;
+      const ratio = meal.guests / baseServings;
       meal.ingredients.forEach((ing) => {
         const key = ing.name.toLowerCase().trim();
         const qty = (Number(ing.quantity) || 0) * ratio;
@@ -219,10 +232,23 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans">
-      {/* BARRE DE NAVIGATION EN HAUT */}
+      {/* BARRE DE NAVIGATION AVEC LOGO */}
       <header className="bg-emerald-700 text-white shadow-md sticky top-0 z-30">
         <div className="max-w-2xl mx-auto flex justify-between items-center p-3">
-          <h1 className="font-bold text-lg tracking-wide">🥗 Gilmeal</h1>
+          {/* Remplacement par votre Logo */}
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}>
+            <img 
+              src="/logo.png" 
+              alt="Logo Popote & Co" 
+              className="h-9 w-auto object-contain rounded-lg"
+              onError={(e) => {
+                // Secours visuel si le fichier logo.png n'existe pas encore dans /public
+                e.target.style.display = 'none';
+              }}
+            />
+            <span className="font-bold text-lg tracking-wide hidden sm:inline">Popote & Co</span>
+          </div>
+
           <nav className="flex gap-1 bg-emerald-800/50 p-1 rounded-xl">
             <button
               onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
@@ -258,7 +284,6 @@ export default function App() {
         {/* ========================================================= */}
         {activeTab === 'recipes' && !activeRecipe && (
           <div className="space-y-4">
-            {/* Bouton Créer une recette */}
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-bold text-slate-800">Catalogue</h2>
               <button
@@ -269,7 +294,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* Niveau 1 : Catégories Principales */}
+            {/* Catégories Principales */}
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
               {MAIN_CATEGORIES.map((cat) => (
                 <button
@@ -289,7 +314,7 @@ export default function App() {
               ))}
             </div>
 
-            {/* Niveau 2 : Sous-Catégories */}
+            {/* Sous-Catégories */}
             {SUB_CATEGORIES[selectedMainCat] && (
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {SUB_CATEGORIES[selectedMainCat].map((sub) => (
@@ -317,7 +342,7 @@ export default function App() {
               className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
 
-            {/* Liste des cartes recettes */}
+            {/* Cartes recettes */}
             <div className="grid gap-3">
               {filteredRecipes.length === 0 ? (
                 <p className="text-center text-slate-400 py-6 text-sm">Aucune recette disponible.</p>
@@ -328,7 +353,12 @@ export default function App() {
                     onClick={() => setActiveRecipe(r)}
                     className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center cursor-pointer hover:border-emerald-500 transition"
                   >
-                    <span className="font-bold text-slate-800">{r.title}</span>
+                    <div>
+                      <span className="font-bold text-slate-800 block">{r.title}</span>
+                      <span className="text-[11px] text-slate-400">
+                        Portion de base : {r.servings || 4} pers.
+                      </span>
+                    </div>
                     <span className="text-slate-400 text-sm">➜</span>
                   </div>
                 ))
@@ -363,14 +393,44 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center border-b pb-3">
+            <div>
               <h2 className="text-xl font-bold text-slate-800">{activeRecipe.title}</h2>
-              <button
-                onClick={() => addRecipeToPlanning(activeRecipe)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl shadow"
-              >
-                + Ajout panier
-              </button>
+              <p className="text-xs text-slate-500">
+                Recette créée pour <strong className="text-slate-700">{activeRecipe.servings || 4} pers.</strong>
+              </p>
+            </div>
+
+            {/* CHOIX DU NOMBRE DE PERSONNES POUR LE PANIER */}
+            <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 flex justify-between items-center">
+              <span className="text-xs font-bold text-emerald-900">
+                Préparer pour :
+              </span>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1 bg-white border border-emerald-300 rounded-lg p-1">
+                  <button
+                    onClick={() => setSelectedGuests(Math.max(1, selectedGuests - 1))}
+                    className="w-6 h-6 bg-emerald-100 text-emerald-800 rounded font-bold text-xs"
+                  >
+                    -
+                  </button>
+                  <span className="text-xs font-bold text-slate-800 px-2">
+                    {selectedGuests} pers.
+                  </span>
+                  <button
+                    onClick={() => setSelectedGuests(selectedGuests + 1)}
+                    className="w-6 h-6 bg-emerald-100 text-emerald-800 rounded font-bold text-xs"
+                  >
+                    +
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => addRecipeToPlanning(activeRecipe)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl shadow"
+                >
+                  + Ajout panier
+                </button>
+              </div>
             </div>
 
             {/* Onglets Fiche Recette */}
@@ -383,7 +443,7 @@ export default function App() {
                     : 'border-transparent text-slate-400'
                 }`}
               >
-                Ingrédients
+                Ingrédients ({selectedGuests} pers.)
               </button>
               <button
                 onClick={() => setRecipeDetailTab('instructions')}
@@ -393,18 +453,24 @@ export default function App() {
                     : 'border-transparent text-slate-400'
                 }`}
               >
-                Recette / Étapes
+                Étapes de recette
               </button>
             </div>
 
             {recipeDetailTab === 'ingredients' ? (
               <ul className="space-y-2">
-                {activeRecipe.ingredients?.map((ing, i) => (
-                  <li key={i} className="flex justify-between text-sm border-b border-slate-50 py-1">
-                    <span className="text-slate-700">{ing.name}</span>
-                    <span className="font-bold text-emerald-700">{ing.quantity}</span>
-                  </li>
-                ))}
+                {activeRecipe.ingredients?.map((ing, i) => {
+                  const baseServings = activeRecipe.servings || 4;
+                  const calculatedQty = (Number(ing.quantity) || 0) * (selectedGuests / baseServings);
+                  return (
+                    <li key={i} className="flex justify-between text-sm border-b border-slate-50 py-1">
+                      <span className="text-slate-700">{ing.name}</span>
+                      <span className="font-bold text-emerald-700">
+                        {calculatedQty ? Math.round(calculatedQty * 10) / 10 : ing.quantity}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <p className="text-sm text-slate-600 whitespace-pre-line leading-relaxed">
@@ -441,7 +507,7 @@ export default function App() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
                       Catégorie
@@ -459,9 +525,10 @@ export default function App() {
                       ))}
                     </select>
                   </div>
+
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                      Sous-Catégorie
+                      Sous-Cat.
                     </label>
                     <select
                       value={formSubCategory}
@@ -473,11 +540,25 @@ export default function App() {
                       ))}
                     </select>
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                      Base Pers.
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formServings}
+                      onChange={(e) => setFormServings(e.target.value)}
+                      className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                    Ingrédients
+                    Ingrédients (Quantité pour {formServings} pers.)
                   </label>
                   {formIngredients.map((ing, i) => (
                     <div key={i} className="flex gap-2 mb-2">
@@ -523,7 +604,6 @@ export default function App() {
                     rows="3"
                     value={formInstructions}
                     onChange={(e) => setFormInstructions(e.target.value)}
-                    placeholder="Émietter le thon, couper les tomates..."
                     className="w-full p-2 border border-slate-200 rounded-lg text-sm"
                   ></textarea>
                 </div>
@@ -692,7 +772,7 @@ export default function App() {
                       <span className="text-slate-700 capitalize text-sm font-medium">{item.name}</span>
                     </label>
                     <span className="bg-emerald-50 text-emerald-700 font-bold text-xs px-2.5 py-1 rounded-full">
-                      x {Math.round(item.quantity)}
+                      x {Math.round(item.quantity * 10) / 10}
                     </span>
                   </li>
                 ))}
