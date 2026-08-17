@@ -3,13 +3,20 @@ import { supabase } from './supabaseClient';
 
 const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 const MEALS = ['Déjeuner', 'Dîner'];
+const CATEGORIES = ['Toutes', 'Entrée', 'Plat', 'Dessert', 'Snack'];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('recipes');
+  // --- ÉTATS DE NAVIGATION ---
+  const [currentView, setCurrentView] = useState('recipes-list'); // 'recipes-list', 'recipes-add', 'planning-week', 'shopping-list'
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [openSubmenu, setOpenSubmenu] = useState('recipes'); // 'recipes', 'planning', 'shopping'
+
+  // --- ÉTATS DES DONNÉES ---
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('Toutes');
 
-  // --- PLANNING (dans le localStorage pour l'instant) ---
+  // --- PLANNING (localStorage) ---
   const [planning, setPlanning] = useState(() => {
     const saved = localStorage.getItem('meal_planner_planning');
     return saved ? JSON.parse(saved) : {};
@@ -19,7 +26,7 @@ export default function App() {
     localStorage.setItem('meal_planner_planning', JSON.stringify(planning));
   }, [planning]);
 
-  // --- CHARGER LES RECETTES DEPUIS SUPABASE ---
+  // --- CHARGER LES RECETTES ---
   const fetchRecipes = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -27,9 +34,7 @@ export default function App() {
       .select('*')
       .order('id', { ascending: false });
 
-    if (error) {
-      console.error('Erreur lors du chargement :', error);
-    } else {
+    if (!error) {
       setRecipes(data || []);
     }
     setLoading(false);
@@ -39,9 +44,11 @@ export default function App() {
     fetchRecipes();
   }, []);
 
-  // --- FORMULAIRE D'AJOUT ---
-  const [newTitle, setNewTitle] = useState('');
+  // --- FORMULAIRE RECETTES ---
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('Plat');
   const [ingredients, setIngredients] = useState([{ name: '', quantity: '' }]);
+  const [editingRecipeId, setEditingRecipeId] = useState(null);
 
   const handleIngredientChange = (index, field, value) => {
     const updated = [...ingredients];
@@ -53,87 +60,68 @@ export default function App() {
     setIngredients([...ingredients, { name: '', quantity: '' }]);
   };
 
-  const handleAddRecipe = async (e) => {
+  const removeIngredientField = (index) => {
+    setIngredients(ingredients.filter((_, i) => i !== index));
+  };
+
+  const resetForm = () => {
+    setTitle('');
+    setCategory('Plat');
+    setIngredients([{ name: '', quantity: '' }]);
+    setEditingRecipeId(null);
+  };
+
+  const handleSaveRecipe = async (e) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    if (!title.trim()) return;
 
-    const filteredIngredients = ingredients.filter((ing) => ing.name.trim() !== '');
+    const filteredIngs = ingredients.filter((ing) => ing.name.trim() !== '');
 
-    const { data, error } = await supabase
-      .from('recipes')
-      .insert([
-        {
-          title: newTitle,
-          category: 'Plat',
-          ingredients: filteredIngredients,
-        },
-      ])
-      .select();
+    if (editingRecipeId) {
+      const { error } = await supabase
+        .from('recipes')
+        .update({ title, category, ingredients: filteredIngs })
+        .eq('id', editingRecipeId);
 
-    if (error) {
-      alert('Erreur lors de l\'ajout de la recette : ' + error.message);
-    } else if (data) {
-      setRecipes([data[0], ...recipes]);
-      setNewTitle('');
-      setIngredients([{ name: '', quantity: '' }]);
-    }
-  };
-
-  // --- ÉDITION ---
-  const [editingId, setEditingId] = useState(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editIngredients, setEditIngredients] = useState([]);
-
-  const startEditing = (recipe) => {
-    setEditingId(recipe.id);
-    setEditTitle(recipe.title);
-    setEditIngredients(JSON.parse(JSON.stringify(recipe.ingredients)));
-  };
-
-  const handleEditIngredientChange = (index, field, value) => {
-    const updated = [...editIngredients];
-    updated[index][field] = value;
-    setEditIngredients(updated);
-  };
-
-  const addEditIngredientField = () => {
-    setEditIngredients([...editIngredients, { name: '', quantity: '' }]);
-  };
-
-  const removeEditIngredientField = (index) => {
-    setEditIngredients(editIngredients.filter((_, i) => i !== index));
-  };
-
-  const saveEdit = async (id) => {
-    const filteredIngredients = editIngredients.filter((ing) => ing.name.trim() !== '');
-
-    const { error } = await supabase
-      .from('recipes')
-      .update({
-        title: editTitle,
-        ingredients: filteredIngredients,
-      })
-      .eq('id', id);
-
-    if (error) {
-      alert('Erreur lors de la modification : ' + error.message);
+      if (!error) {
+        setRecipes(
+          recipes.map((r) =>
+            r.id === editingRecipeId ? { ...r, title, category, ingredients: filteredIngs } : r
+          )
+        );
+        resetForm();
+        setCurrentView('recipes-list');
+      }
     } else {
-      setRecipes(
-        recipes.map((r) =>
-          r.id === id ? { ...r, title: editTitle, ingredients: filteredIngredients } : r
-        )
-      );
-      setEditingId(null);
+      const { data, error } = await supabase
+        .from('recipes')
+        .insert([{ title, category, ingredients: filteredIngs }])
+        .select();
+
+      if (!error && data) {
+        setRecipes([data[0], ...recipes]);
+        resetForm();
+        setCurrentView('recipes-list');
+      }
     }
   };
 
-  // --- SUPPRESSION ---
+  const startEdit = (recipe) => {
+    setEditingRecipeId(recipe.id);
+    setTitle(recipe.title);
+    setCategory(recipe.category || 'Plat');
+    setIngredients(
+      recipe.ingredients.length > 0
+        ? JSON.parse(JSON.stringify(recipe.ingredients))
+        : [{ name: '', quantity: '' }]
+    );
+    setCurrentView('recipes-add');
+  };
+
   const deleteRecipe = async (id) => {
+    if (!window.confirm('Supprimer cette recette ?')) return;
     const { error } = await supabase.from('recipes').delete().eq('id', id);
-
-    if (error) {
-      alert('Erreur lors de la suppression : ' + error.message);
-    } else {
+    if (!error) {
       setRecipes(recipes.filter((r) => r.id !== id));
     }
   };
@@ -146,10 +134,9 @@ export default function App() {
     }));
   };
 
-  // --- CALCUL PANIER DE COURSES ---
+  // --- PANIER ---
   const getShoppingList = () => {
     const totals = {};
-
     Object.values(planning).forEach((recipeId) => {
       if (!recipeId) return;
       const recipe = recipes.find((r) => r.id === recipeId);
@@ -165,246 +152,401 @@ export default function App() {
         }
       });
     });
-
     return Object.values(totals);
   };
 
-  const shoppingList = getShoppingList();
+  const filteredRecipes =
+    selectedCategory === 'Toutes'
+      ? recipes
+      : recipes.filter((r) => (r.category || 'Plat') === selectedCategory);
+
+  const navigateTo = (view) => {
+    setCurrentView(view);
+    setIsSidebarOpen(false);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-800 flex flex-col">
-      <header className="bg-emerald-600 text-white p-4 shadow-md text-center font-bold text-xl">
-        🥗 GILMEAL
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
+      {/* HEADER */}
+      <header className="bg-emerald-600 text-white p-4 shadow-md flex items-center justify-between sticky top-0 z-30">
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="p-2 rounded-lg hover:bg-emerald-700 focus:outline-none transition"
+        >
+          <span className="text-2xl">☰</span>
+        </button>
+        <h1 className="text-lg font-bold tracking-wide">🥗 Popote & Co</h1>
+        <div className="w-8"></div>
       </header>
 
-      {/* Navigation */}
-      <nav className="flex justify-around bg-white border-b border-gray-200">
-        {['planning', 'recipes', 'shopping'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`py-3 px-4 font-medium border-b-2 capitalize ${
-              activeTab === tab
-                ? 'border-emerald-600 text-emerald-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab === 'planning' ? '📅 Planning' : tab === 'recipes' ? '📖 Recettes' : '🛒 Panier'}
-          </button>
-        ))}
-      </nav>
+      {/* OVERLAY & SIDEBAR MENU */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
+      <aside
+        className={`fixed top-0 left-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="p-5 bg-emerald-600 text-white font-bold text-xl flex justify-between items-center">
+          <span>Navigation</span>
+          <button onClick={() => setIsSidebarOpen(false)} className="text-2xl">
+            ✕
+          </button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+          {/* MENU RECETTES */}
+          <div>
+            <button
+              onClick={() => setOpenSubmenu(openSubmenu === 'recipes' ? '' : 'recipes')}
+              className="w-full flex justify-between items-center p-3 rounded-xl font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              <span className="flex items-center gap-2">📖 Recettes</span>
+              <span>{openSubmenu === 'recipes' ? '▲' : '▼'}</span>
+            </button>
+            {openSubmenu === 'recipes' && (
+              <div className="ml-4 pl-3 border-l-2 border-emerald-200 space-y-1 mt-1">
+                <button
+                  onClick={() => navigateTo('recipes-list')}
+                  className={`w-full text-left p-2 text-sm rounded-lg ${
+                    currentView === 'recipes-list'
+                      ? 'bg-emerald-50 text-emerald-700 font-bold'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  📋 Voir toutes les recettes
+                </button>
+                <button
+                  onClick={() => {
+                    resetForm();
+                    navigateTo('recipes-add');
+                  }}
+                  className={`w-full text-left p-2 text-sm rounded-lg ${
+                    currentView === 'recipes-add' && !editingRecipeId
+                      ? 'bg-emerald-50 text-emerald-700 font-bold'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  ➕ Ajouter une recette
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* MENU PLANNING */}
+          <div>
+            <button
+              onClick={() => setOpenSubmenu(openSubmenu === 'planning' ? '' : 'planning')}
+              className="w-full flex justify-between items-center p-3 rounded-xl font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              <span className="flex items-center gap-2">📅 Planning</span>
+              <span>{openSubmenu === 'planning' ? '▲' : '▼'}</span>
+            </button>
+            {openSubmenu === 'planning' && (
+              <div className="ml-4 pl-3 border-l-2 border-emerald-200 space-y-1 mt-1">
+                <button
+                  onClick={() => navigateTo('planning-week')}
+                  className={`w-full text-left p-2 text-sm rounded-lg ${
+                    currentView === 'planning-week'
+                      ? 'bg-emerald-50 text-emerald-700 font-bold'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  🗓️ Planning de la semaine
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* MENU COURSES */}
+          <div>
+            <button
+              onClick={() => setOpenSubmenu(openSubmenu === 'shopping' ? '' : 'shopping')}
+              className="w-full flex justify-between items-center p-3 rounded-xl font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              <span className="flex items-center gap-2">🛒 Panier & Courses</span>
+              <span>{openSubmenu === 'shopping' ? '▲' : '▼'}</span>
+            </button>
+            {openSubmenu === 'shopping' && (
+              <div className="ml-4 pl-3 border-l-2 border-emerald-200 space-y-1 mt-1">
+                <button
+                  onClick={() => navigateTo('shopping-list')}
+                  className={`w-full text-left p-2 text-sm rounded-lg ${
+                    currentView === 'shopping-list'
+                      ? 'bg-emerald-50 text-emerald-700 font-bold'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  📝 Liste de courses
+                </button>
+              </div>
+            )}
+          </div>
+        </nav>
+      </aside>
+
+      {/* CONTENU PRINCIPAL */}
       <main className="flex-1 p-4 max-w-2xl mx-auto w-full">
-        {/* ONGLET RECETTES */}
-        {activeTab === 'recipes' && (
-          <div className="space-y-6">
-            <form onSubmit={handleAddRecipe} className="bg-white p-4 rounded-xl shadow space-y-4">
-              <h2 className="text-lg font-bold text-emerald-700">Ajouter une recette partagée</h2>
+        {/* VUE : LISTE DES RECETTES */}
+        {currentView === 'recipes-list' && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold text-slate-800">Catalogue de Recettes</h2>
+              <button
+                onClick={() => {
+                  resetForm();
+                  navigateTo('recipes-add');
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-3 py-2 rounded-xl shadow transition"
+              >
+                + Nouvelle
+              </button>
+            </div>
+
+            {/* Filtres par catégories */}
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+                    selectedCategory === cat
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {loading ? (
+              <p className="text-center text-slate-500 py-8">Chargement des recettes...</p>
+            ) : filteredRecipes.length === 0 ? (
+              <div className="bg-white p-8 rounded-2xl shadow-sm text-center border border-slate-100">
+                <p className="text-slate-500">Aucune recette dans cette catégorie.</p>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {filteredRecipes.map((recipe) => (
+                  <div
+                    key={recipe.id}
+                    className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition"
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <div>
+                        <span className="inline-block bg-emerald-50 text-emerald-700 text-xs font-bold px-2.5 py-0.5 rounded-full mb-1">
+                          {recipe.category || 'Plat'}
+                        </span>
+                        <h3 className="font-bold text-slate-800 text-lg">{recipe.title}</h3>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => startEdit(recipe)}
+                          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 text-sm"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => deleteRecipe(recipe.id)}
+                          className="p-1.5 hover:bg-red-50 rounded-lg text-red-500 text-sm"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                        Ingrédients
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {recipe.ingredients &&
+                          recipe.ingredients.map((ing, i) => (
+                            <span
+                              key={i}
+                              className="bg-slate-100 text-slate-700 text-xs px-2.5 py-1 rounded-lg"
+                            >
+                              {ing.name} <span className="font-bold">({ing.quantity})</span>
+                            </span>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* VUE : AJOUT / ÉDITION RECETTE */}
+        {currentView === 'recipes-add' && (
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-5">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h2 className="text-lg font-bold text-slate-800">
+                {editingRecipeId ? 'Éditer la recette' : 'Créer une recette'}
+              </h2>
+              <button
+                onClick={() => navigateTo('recipes-list')}
+                className="text-slate-400 hover:text-slate-600 text-sm font-semibold"
+              >
+                Retour
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRecipe} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Nom du plat</label>
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                  Nom du plat
+                </label>
                 <input
                   type="text"
-                  placeholder="ex: Risotto aux champignons"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  className="mt-1 w-full p-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="ex: Tarama maison"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ingrédients</label>
-                {ingredients.map((ing, index) => (
-                  <div key={index} className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      placeholder="Ingrédient (ex: Riz)"
-                      value={ing.name}
-                      onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
-                      className="flex-1 p-2 border border-gray-300 rounded-lg text-sm"
-                      required
-                    />
-                    <input
-                      type="number"
-                      placeholder="Qté"
-                      value={ing.quantity}
-                      onChange={(e) => handleIngredientChange(index, 'quantity', e.target.value)}
-                      className="w-20 p-2 border border-gray-300 rounded-lg text-sm"
-                      required
-                    />
-                  </div>
-                ))}
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
+                  Catégorie
+                </label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full p-3 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                >
+                  {CATEGORIES.filter((c) => c !== 'Toutes').map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase mb-2">
+                  Ingrédients
+                </label>
+                <div className="space-y-2">
+                  {ingredients.map((ing, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        placeholder="Ingrédient"
+                        value={ing.name}
+                        onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
+                        className="flex-1 p-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        required
+                      />
+                      <input
+                        type="number"
+                        placeholder="Qté"
+                        value={ing.quantity}
+                        onChange={(e) => handleIngredientChange(index, 'quantity', e.target.value)}
+                        className="w-20 p-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        required
+                      />
+                      {ingredients.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeIngredientField(index)}
+                          className="p-2 text-slate-400 hover:text-red-500"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
                 <button
                   type="button"
                   onClick={addIngredientField}
-                  className="text-sm text-emerald-600 font-semibold hover:underline mt-1"
+                  className="mt-3 text-xs font-bold text-emerald-600 hover:underline"
                 >
                   + Ajouter un ingrédient
                 </button>
               </div>
 
-              <button
-                type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg transition"
-              >
-                Enregistrer dans la base partagée
-              </button>
+              <div className="pt-3 flex gap-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow transition"
+                >
+                  {editingRecipeId ? 'Mettre à jour' : 'Enregistrer la recette'}
+                </button>
+              </div>
             </form>
+          </div>
+        )}
 
-            <div className="space-y-4">
-              <h2 className="text-lg font-bold text-gray-700">Mes Recettes Partagées ({recipes.length})</h2>
-              {loading ? (
-                <p className="text-gray-500 text-sm">Chargement des recettes...</p>
-              ) : recipes.length === 0 ? (
-                <p className="text-gray-500 text-sm">Aucune recette trouvée. Ajoutez la première !</p>
-              ) : (
-                recipes.map((recipe) => (
-                  <div key={recipe.id} className="bg-white p-4 rounded-xl shadow border border-gray-100">
-                    {editingId === recipe.id ? (
-                      <div className="space-y-3">
-                        <input
-                          type="text"
-                          value={editTitle}
-                          onChange={(e) => setEditTitle(e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded-lg font-bold"
-                        />
-                        <div className="space-y-2">
-                          {editIngredients.map((ing, i) => (
-                            <div key={i} className="flex gap-2 items-center">
-                              <input
-                                type="text"
-                                value={ing.name}
-                                onChange={(e) => handleEditIngredientChange(i, 'name', e.target.value)}
-                                className="flex-1 p-1 border rounded text-sm"
-                              />
-                              <input
-                                type="number"
-                                value={ing.quantity}
-                                onChange={(e) => handleEditIngredientChange(i, 'quantity', e.target.value)}
-                                className="w-20 p-1 border rounded text-sm"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => removeEditIngredientField(i)}
-                                className="text-red-500 font-bold px-2 text-sm"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ))}
-                          <button
-                            type="button"
-                            onClick={addEditIngredientField}
-                            className="text-xs text-emerald-600 font-semibold hover:underline"
+        {/* VUE : PLANNING */}
+        {currentView === 'planning-week' && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold text-slate-800">Planning de la semaine</h2>
+            <div className="space-y-3">
+              {DAYS.map((day) => (
+                <div key={day} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                  <h3 className="font-bold text-emerald-700 text-sm uppercase tracking-wide border-b pb-2 mb-3">
+                    {day}
+                  </h3>
+                  <div className="space-y-2">
+                    {MEALS.map((meal) => {
+                      const currentRecipeId = planning[`${day}-${meal}`] || '';
+                      return (
+                        <div key={meal} className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-slate-500 w-20">{meal}</span>
+                          <select
+                            value={currentRecipeId}
+                            onChange={(e) => handleMealSelect(day, meal, e.target.value)}
+                            className="flex-1 p-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                           >
-                            + Ingrédient
-                          </button>
-                        </div>
-                        <div className="flex gap-2 pt-2">
-                          <button
-                            onClick={() => saveEdit(recipe.id)}
-                            className="flex-1 bg-emerald-600 text-white py-1 px-3 rounded text-sm font-semibold"
-                          >
-                            Valider
-                          </button>
-                          <button
-                            onClick={() => setEditingId(null)}
-                            className="bg-gray-200 text-gray-700 py-1 px-3 rounded text-sm font-semibold"
-                          >
-                            Annuler
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="flex justify-between items-start">
-                          <h3 className="font-bold text-gray-800 text-md">{recipe.title}</h3>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => startEditing(recipe)}
-                              className="text-sm text-blue-600 hover:underline"
-                            >
-                              ✏️ Modifier
-                            </button>
-                            <button
-                              onClick={() => deleteRecipe(recipe.id)}
-                              className="text-sm text-red-500 hover:underline"
-                            >
-                              🗑️ Supprimer
-                            </button>
-                          </div>
-                        </div>
-                        <ul className="mt-2 text-sm text-gray-600 list-disc list-inside">
-                          {recipe.ingredients &&
-                            recipe.ingredients.map((ing, i) => (
-                              <li key={i}>
-                                {ing.name} : <span className="font-semibold">{ing.quantity}</span>
-                              </li>
+                            <option value="">-- Libres / Reste --</option>
+                            {recipes.map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.title} ({r.category || 'Plat'})
+                              </option>
                             ))}
-                        </ul>
-                      </div>
-                    )}
+                          </select>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* ONGLET PLANNING */}
-        {activeTab === 'planning' && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-gray-700">Planning de la semaine</h2>
-            {DAYS.map((day) => (
-              <div key={day} className="bg-white p-4 rounded-xl shadow border border-gray-100">
-                <h3 className="font-bold text-emerald-700 text-md border-b pb-2 mb-3">{day}</h3>
-                <div className="space-y-2">
-                  {MEALS.map((meal) => {
-                    const currentRecipeId = planning[`${day}-${meal}`] || '';
-                    return (
-                      <div key={meal} className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-gray-600 w-24">{meal} :</span>
-                        <select
-                          value={currentRecipeId}
-                          onChange={(e) => handleMealSelect(day, meal, e.target.value)}
-                          className="flex-1 p-2 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:bg-white"
-                        >
-                          <option value="">-- Aucun repas --</option>
-                          {recipes.map((r) => (
-                            <option key={r.id} value={r.id}>
-                              {r.title}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ONGLET PANIER */}
-        {activeTab === 'shopping' && (
-          <div className="bg-white p-4 rounded-xl shadow space-y-4">
-            <h2 className="text-lg font-bold text-emerald-700">🛒 Liste de courses</h2>
-            {shoppingList.length === 0 ? (
-              <p className="text-gray-500 text-sm">
-                Aucune recette sélectionnée dans le planning pour cette semaine.
+        {/* VUE : LISTE DE COURSES */}
+        {currentView === 'shopping-list' && (
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+            <h2 className="text-xl font-bold text-slate-800">🛒 Liste de courses</h2>
+            {getShoppingList().length === 0 ? (
+              <p className="text-slate-400 text-sm py-4">
+                Aucun repas planifié pour le moment. Sélectionnez des recettes dans le planning !
               </p>
             ) : (
-              <ul className="divide-y divide-gray-100">
-                {shoppingList.map((item, index) => (
-                  <li key={index} className="py-2 flex items-center justify-between">
+              <ul className="divide-y divide-slate-100">
+                {getShoppingList().map((item, index) => (
+                  <li key={index} className="py-3 flex items-center justify-between">
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input
                         type="checkbox"
-                        className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                        className="w-5 h-5 text-emerald-600 rounded-md focus:ring-emerald-500 border-slate-300"
                       />
-                      <span className="text-gray-800">{item.name}</span>
+                      <span className="text-slate-700 capitalize font-medium">{item.name}</span>
                     </label>
-                    <span className="font-bold text-emerald-700 text-sm">x {item.quantity}</span>
+                    <span className="bg-emerald-50 text-emerald-700 font-bold text-xs px-2.5 py-1 rounded-full">
+                      x {item.quantity}
+                    </span>
                   </li>
                 ))}
               </ul>
