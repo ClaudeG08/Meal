@@ -318,7 +318,7 @@ export default function App() {
           setSelectedMainCat(cat.name);
           setSelectedSubCat('Tous');
         }}
-        className={`flex flex-col items-center justify-center min-w-[90px] p-2.5 rounded-2xl text-xs font-bold transition-all ${
+        className={`flex flex-col items-center justify-center min-w-[135px] p-2.5 rounded-2xl text-xs font-bold transition-all ${
           isSelected
             ? 'bg-emerald-600 text-white shadow-md scale-105'
             : 'bg-white text-slate-700 border border-slate-200 hover:border-emerald-300'
