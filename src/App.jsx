@@ -215,11 +215,9 @@ export default function App() {
     alert(`"${recipe.title}" (${selectedGuests} pers.) ajouté au panier !`);
   };
 
-  // SUPPRESSION D'UN REPAS DE LA LISTE
   const removePlannedMeal = (id) => {
     setPlannedMeals(plannedMeals.filter((m) => m.id !== id));
     
-    // Nettoyer l'agenda si ce repas y était assigné
     const updatedAgenda = { ...agenda };
     Object.keys(updatedAgenda).forEach((key) => {
       if (updatedAgenda[key] === id) {
@@ -268,40 +266,44 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans">
-      {/* BARRE DE NAVIGATION */}
-      <header className="bg-emerald-700 text-white shadow-md sticky top-0 z-30">
-        <div className="max-w-2xl mx-auto flex justify-between items-center p-3">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}>
+      {/* BARRE DE NAVIGATION EN IMAGE + HAUTEUR AGRANDIE */}
+      <header className="relative bg-emerald-800 bg-[url('/banner.jpg')] bg-cover bg-center text-white shadow-lg sticky top-0 z-30 h-20 flex items-center">
+        {/* Calque d'assombrissement pour garder les boutons très lisibles */}
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"></div>
+
+        <div className="relative max-w-2xl mx-auto w-full flex justify-between items-center px-4">
+          {/* Logo seul (sans le texte Popote & Co) */}
+          <div className="flex items-center cursor-pointer" onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}>
             <img 
               src="/logo.png" 
               alt="Logo" 
-              className="h-9 w-auto object-contain rounded-lg"
+              className="h-14 w-auto object-contain drop-shadow-md rounded-xl"
               onError={(e) => { e.target.style.display = 'none'; }}
             />
-            <span className="font-bold text-lg tracking-wide hidden sm:inline"></span>
           </div>
 
-          <nav className="flex gap-1 bg-emerald-800/50 p-1 rounded-xl">
+          {/* Navigation récente et bien centrée */}
+          <nav className="flex gap-1.5 bg-black/40 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 shadow-inner">
             <button
               onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                activeTab === 'recipes' ? 'bg-white text-emerald-800 shadow' : 'text-emerald-100'
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                activeTab === 'recipes' ? 'bg-white text-emerald-900 shadow' : 'text-white hover:bg-white/20'
               }`}
             >
               Recettes
             </button>
             <button
               onClick={() => setActiveTab('planning')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                activeTab === 'planning' ? 'bg-white text-emerald-800 shadow' : 'text-emerald-100'
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                activeTab === 'planning' ? 'bg-white text-emerald-900 shadow' : 'text-white hover:bg-white/20'
               }`}
             >
               Planning
             </button>
             <button
               onClick={() => setActiveTab('shopping')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                activeTab === 'shopping' ? 'bg-white text-emerald-800 shadow' : 'text-emerald-100'
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                activeTab === 'shopping' ? 'bg-white text-emerald-900 shadow' : 'text-white hover:bg-white/20'
               }`}
             >
               Panier
@@ -647,7 +649,7 @@ export default function App() {
         )}
 
         {/* ========================================================= */}
-        {/* 2. SECTION PLANNING (Liste des repas & Agenda 21 jours)  */}
+        {/* 2. SECTION PLANNING                                      */}
         {/* ========================================================= */}
         {activeTab === 'planning' && (
           <div className="space-y-4">
@@ -714,7 +716,6 @@ export default function App() {
                           </button>
                         </div>
 
-                        {/* BOUTON SUPPRIMER LE REPAS DE LA LISTE */}
                         <button
                           onClick={() => removePlannedMeal(meal.id)}
                           title="Supprimer du panier"
@@ -731,7 +732,6 @@ export default function App() {
 
             {planningSubTab === 'agenda' && (
               <div className="space-y-4">
-                {/* Sélecteur de date de début */}
                 <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
                   <label className="text-xs font-bold text-slate-700 uppercase">
                     📅 Date de début :
@@ -744,7 +744,6 @@ export default function App() {
                   />
                 </div>
 
-                {/* Grille des 21 jours */}
                 <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-1">
                   {days.map((day) => (
                     <div key={day.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2">
