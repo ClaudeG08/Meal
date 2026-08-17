@@ -239,14 +239,14 @@ export default function App() {
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}>
             <img 
               src="/logo.png" 
-              alt="Logo Popote & Co" 
+              alt="Logo" 
               className="h-9 w-auto object-contain rounded-lg"
               onError={(e) => {
                 // Secours visuel si le fichier logo.png n'existe pas encore dans /public
                 e.target.style.display = 'none';
               }}
             />
-            <span className="font-bold text-lg tracking-wide hidden sm:inline">Popote & Co</span>
+            <span className="font-bold text-lg tracking-wide hidden sm:inline"></span>
           </div>
 
           <nav className="flex gap-1 bg-emerald-800/50 p-1 rounded-xl">
