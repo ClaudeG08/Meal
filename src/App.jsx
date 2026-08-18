@@ -291,7 +291,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans relative">
+    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-semibold relative">
       {/* BANNIÈRE SUPÉRIEURE */}
       <header className="relative bg-emerald-800 bg-[url('/banner.jpg')] bg-cover bg-center text-white shadow-md h-20 flex items-center justify-center">
         <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
