@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 
+// Clé API gratuite à obtenir sur https://www.pexels.com/api/ (compte gratuit, clé instantanée)
+const PEXELS_API_KEY = 'VOTRE_CLE_API_PEXELS';
+
+// Nom du bucket Supabase Storage à créer manuellement (Storage > New bucket > public)
+const RECIPE_IMAGES_BUCKET = 'recipe-images';
+
 const MAIN_CATEGORIES = [
   { name: 'Plats', image: '/plats.png', bg: 'bg-[#E8F1E8]' },
   { name: 'Viandes et poissons', image: '/viandes_poissons.png', bg: 'bg-[#FDEBE6]' },
@@ -57,6 +63,36 @@ const getDefaultImage = (category) => {
   return cat ? cat.image : '/plats.png';
 };
 
+// Upload d'une image depuis l'appareil vers Supabase Storage, renvoie l'URL publique
+const uploadRecipeImage = async (file) => {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+
+  const { error } = await supabase.storage
+    .from(RECIPE_IMAGES_BUCKET)
+    .upload(fileName, file);
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from(RECIPE_IMAGES_BUCKET).getPublicUrl(fileName);
+  return data.publicUrl;
+};
+
+// Recherche d'images sur Pexels à partir d'un mot-clé (nom de recette)
+const searchRecipeImages = async (query) => {
+  const response = await fetch(
+    `https://api.pexels.com/v1/search?query=${encodeURIComponent(query + ' recette plat')}&per_page=6`,
+    { headers: { Authorization: PEXELS_API_KEY } }
+  );
+  if (!response.ok) throw new Error('Erreur API Pexels');
+  const data = await response.json();
+  return (data.photos || []).map((p) => ({
+    id: p.id,
+    thumb: p.src.small,
+    full: p.src.large,
+  }));
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('recipes');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
@@ -97,6 +133,12 @@ export default function App() {
   const [formImageUrl, setFormImageUrl] = useState('');
   const [formIngredients, setFormIngredients] = useState([{ name: '', quantity: '' }]);
   const [formInstructions, setFormInstructions] = useState('');
+
+  // --- ÉTATS SÉLECTEUR D'IMAGE (upload / recherche) ---
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isSearchingImages, setIsSearchingImages] = useState(false);
+  const [imageSearchResults, setImageSearchResults] = useState([]);
+  const [imageSearchError, setImageSearchError] = useState('');
 
   // --- ÉTATS SELECTION NOMBRE DE PERSONNES ---
   const [selectedGuests, setSelectedGuests] = useState(4);
@@ -180,7 +222,53 @@ export default function App() {
     setFormImageUrl('');
     setFormIngredients([{ name: '', quantity: '', unit: 'g' }]);
     setFormInstructions('');
+    setImageSearchResults([]);
+    setImageSearchError('');
     setIsFormOpen(true);
+  };
+
+  const handleImageFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingImage(true);
+    setImageSearchError('');
+    try {
+      const publicUrl = await uploadRecipeImage(file);
+      setFormImageUrl(publicUrl);
+      setImageSearchResults([]);
+    } catch (err) {
+      console.error("Erreur lors de l'upload de l'image :", err);
+      setImageSearchError("Échec de l'envoi de la photo. Réessayez.");
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleSearchImages = async () => {
+    if (!formTitle.trim()) {
+      setImageSearchError("Renseignez d'abord le titre de la recette.");
+      return;
+    }
+    setIsSearchingImages(true);
+    setImageSearchError('');
+    try {
+      const results = await searchRecipeImages(formTitle.trim());
+      if (results.length === 0) {
+        setImageSearchError('Aucune image trouvée pour ce titre.');
+      }
+      setImageSearchResults(results);
+    } catch (err) {
+      console.error('Erreur lors de la recherche d\'image :', err);
+      setImageSearchError("Échec de la recherche d'image.");
+    } finally {
+      setIsSearchingImages(false);
+    }
+  };
+
+  const selectSearchedImage = (url) => {
+    setFormImageUrl(url);
+    setImageSearchResults([]);
   };
 
   const openEditForm = (recipe) => {
@@ -196,6 +284,8 @@ export default function App() {
         : [{ name: '', quantity: '', unit: 'g' }]
     );
     setFormInstructions(recipe.instructions || '');
+    setImageSearchResults([]);
+    setImageSearchError('');
     setIsFormOpen(true);
   };
 
@@ -744,15 +834,83 @@ export default function App() {
 
                 <div>
                   <label className="block text-xs font-extrabold text-slate-600 uppercase mb-1">
-                    Lien de la photo (URL optionnelle)
+                    Photo de la recette
                   </label>
-                  <input
-                    type="url"
-                    placeholder="https://domaine.com/photo.jpg (Laissez vide pour l'image par défaut)"
-                    value={formImageUrl}
-                    onChange={(e) => setFormImageUrl(e.target.value)}
-                    className="w-full p-3 bg-[#FAF7F2] border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
-                  />
+
+                  {formImageUrl && (
+                    <div className="relative mb-2">
+                      <img
+                        src={formImageUrl}
+                        alt="Aperçu"
+                        className="w-full h-40 object-cover rounded-2xl border border-slate-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormImageUrl('')}
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white text-xs font-bold flex items-center justify-center"
+                        title="Retirer la photo"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="cursor-pointer text-center bg-[#E8F3EB] text-[#3D6647] text-xs font-extrabold px-3 py-2.5 rounded-2xl hover:bg-[#dcecdf] transition">
+                      {isUploadingImage ? 'Envoi...' : '📷 Depuis l\'appareil'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageFileChange}
+                        disabled={isUploadingImage}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={handleSearchImages}
+                      disabled={isSearchingImages}
+                      className="bg-[#FAF3DC] text-[#8a6d1f] text-xs font-extrabold px-3 py-2.5 rounded-2xl hover:bg-[#f5ecc9] transition disabled:opacity-60"
+                    >
+                      {isSearchingImages ? 'Recherche...' : '🔍 Chercher une image'}
+                    </button>
+                  </div>
+
+                  {imageSearchError && (
+                    <p className="text-[10px] font-bold text-[#EF6A45] mt-1.5">{imageSearchError}</p>
+                  )}
+
+                  {imageSearchResults.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      {imageSearchResults.map((img) => (
+                        <button
+                          type="button"
+                          key={img.id}
+                          onClick={() => selectSearchedImage(img.full)}
+                          className="rounded-xl overflow-hidden border-2 border-transparent hover:border-[#3D6647] transition"
+                        >
+                          <img src={img.thumb} alt="Suggestion" className="w-full h-16 object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <details className="mt-2">
+                    <summary className="text-[10px] font-extrabold text-slate-400 uppercase cursor-pointer">
+                      Ou coller un lien d'image
+                    </summary>
+                    <input
+                      type="url"
+                      placeholder="https://domaine.com/photo.jpg"
+                      value={formImageUrl}
+                      onChange={(e) => setFormImageUrl(e.target.value)}
+                      className="w-full p-3 mt-1.5 bg-[#FAF7F2] border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
+                    />
+                  </details>
+                  <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                    Laissez vide pour utiliser l'image de la catégorie.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
