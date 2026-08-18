@@ -40,9 +40,12 @@ const SUB_CATEGORIES = {
   ],
   'Desserts': [
     { name: 'Tous', image: '/icons/tous.png' },
-{ name: 'Alcools', image: '/icons/alcool.png' },
-    { name: 'Chauds', image: '/icons/hot.png' },
-    { name: 'Autre', image: '/icons/other_drink.png' },
+],
+'Boissons': [
+    { name: 'Tous', image: '/icons/tous.png' },
+    { name: 'Alcools', image: '/alcool.png' },
+    { name: 'Chauds', image: '/hot.png' },
+    { name: 'Autre', image: '/other_drink.png' },
   ],
 };
 
