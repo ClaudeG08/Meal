@@ -362,34 +362,36 @@ export default function App() {
   </div>
 </div>
 
-            {/* FILTRE CATÉGORIES PRINCIPALES (CARTOUCHES PASTEL) */}
-            <div className="grid grid-cols-5 gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {MAIN_CATEGORIES.map((cat) => {
-                const isSelected = selectedMainCat === cat.name;
-                return (
-                  <button
-                    key={cat.name}
-                    onClick={() => {
-                      setSelectedMainCat(cat.name);
-                      setSelectedSubCat('Tous');
-                    }}
-                    className={`${cat.bg} p-3 rounded-3xl flex flex-col items-center justify-between h-32 text-center transition-all transform hover:scale-105 shadow-sm border-2 ${
-                      isSelected ? 'border-[#3D6647]' : 'border-transparent'
-                    }`}
-                  >
-                    <img
-                      src={cat.image}
-                      alt={cat.name}
-                      className="w-12 h-12 object-contain shrink-0"
-                      onError={(e) => { e.target.style.display = 'none'; }}
-                    />
-                    <span className="text-[11px] font-bold text-slate-700 leading-tight">
-                      {cat.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          {/* FILTRE CATÉGORIES PRINCIPALES */}
+<div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+  {MAIN_CATEGORIES.map((cat) => {
+    const isSelected = selectedMainCat === cat.name;
+    return (
+      <button
+        key={cat.name}
+        onClick={() => {
+          setSelectedMainCat(cat.name);
+          setSelectedSubCat('Tous');
+        }}
+        className={`${cat.bg} min-w-[88px] w-22 aspect-square p-2.5 rounded-2xl flex flex-col items-center justify-between text-center transition-all transform active:scale-95 shadow-sm border-2 shrink-0 ${
+          isSelected ? 'border-[#3D6647]' : 'border-transparent'
+        }`}
+      >
+        <div className="w-full flex-1 flex items-center justify-center">
+          <img
+            src={cat.image}
+            alt={cat.name}
+            className="w-10 h-10 object-contain"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+        </div>
+        <span className="text-[10px] font-bold text-slate-700 leading-tight break-words hyphens-auto w-full line-clamp-2">
+          {cat.name}
+        </span>
+      </button>
+    );
+  })}
+</div>
 
             {/* FILTRE SOUS-CATÉGORIES */}
             {SUB_CATEGORIES[selectedMainCat] && (
