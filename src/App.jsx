@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 
 // Clé API gratuite à obtenir sur https://www.pexels.com/api/ (compte gratuit, clé instantanée)
-const PEXELS_API_KEY = 'VOTRE_CLE_API_PEXELS';
+const PEXELS_API_KEY = 'XSzr1kGcMyAW5qhPBzp9RQwilhRk52anVz7Kvu1gyWKiYeqUY9u1YRa4';
 
 // Nom du bucket Supabase Storage à créer manuellement (Storage > New bucket > public)
 const RECIPE_IMAGES_BUCKET = 'recipe-images';
