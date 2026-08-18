@@ -340,7 +340,7 @@ export default function App() {
     {/* Image de fond positionnée sur la droite */}
     <div 
       className="absolute inset-0 bg-cover bg-right bg-no-repeat pointer-events-none"
-      style={{ backgroundImage: "url('/banner.png')" }} // Remplace par ton image (ex: assiette de tomates/basilic)
+      style={{ backgroundImage: "url('/banner.png')" }} 
     />
 
     {/* Dégradé léger à gauche pour garantir la lisibilité du texte */}
@@ -352,7 +352,7 @@ export default function App() {
         <span className="font-handwriting text-3xl text-[#3D6647] font-bold">
           Bonjour !
         </span>
-        <span className="text-[#EF6A45] font-extrabold text-lg">🪄</span>
+        <span className="text-[#EF6A45] font-extrabold text-lg"></span>
       </div>
       <h1 className="text-xl font-extrabold text-slate-800 leading-snug">
         Qu'est-ce qu'on cuisine aujourd'hui ? <span className="text-[#EF6A45] inline-block ml-0.5"></span>
@@ -380,7 +380,7 @@ export default function App() {
                     <img
                       src={cat.image}
                       alt={cat.name}
-                      className="w-12 h-12 object-contain my-auto"
+                      className="w-12 h-12 object-contain shrink-0"
                       onError={(e) => { e.target.style.display = 'none'; }}
                     />
                     <span className="text-[11px] font-bold text-slate-700 leading-tight">
