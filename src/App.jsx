@@ -1,882 +1,270 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from './supabaseClient';
+import React, { useState } from 'react';
 
+// Données de démonstration
 const MAIN_CATEGORIES = [
-  { name: 'Plats', image: '/plats.png' },
-  { name: 'Viandes et poissons', image: '/viandes_poissons.png' },
-  { name: 'Accompagnements', image: '/accompagnements.png' },
-  { name: 'Entrées', image: '/entrees.png' },
-  { name: 'Desserts', image: '/desserts.png' },
+  { name: 'Plats', bg: 'bg-[#E8F1E8]', img: '/images/categories/plats.png' },
+  { name: 'Viandes et poissons', bg: 'bg-[#FDEBE6]', img: '/images/categories/viandes.png' },
+  { name: 'Accompagnements', bg: 'bg-[#FAF3DC]', img: '/images/categories/accompagnements.png' },
+  { name: 'Entrées', bg: 'bg-[#E8F3EB]', img: '/images/categories/entrees.png' },
+  { name: 'Desserts', bg: 'bg-[#F4EAF4]', img: '/images/categories/desserts.png' },
 ];
 
-const SUB_CATEGORIES = {
-  'Plats': [
-    { name: 'Tous', image: '/icons/tous.png' },
-    { name: 'Tartes & Quiches', image: '/icons/tartes.png' },
-    { name: 'Pâtes & Lasagnes', image: '/icons/pates.png' },
-    { name: 'Mijotés', image: '/icons/mijotes.png' },
-  ],
-  'Viandes et poissons': [
-    { name: 'Tous', image: '/icons/tous.png' },
-    { name: 'Viande', image: '/icons/viande.png' },
-    { name: 'Poisson', image: '/icons/poisson.png' },
-    { name: 'Volaille', image: '/icons/volaille.png' },
-  ],
-  'Accompagnements': [
-    { name: 'Tous', image: '/icons/tous.png' },
-    { name: 'Légumes', image: '/icons/legumes.png' },
-    { name: 'Féculents', image: '/icons/feculents.png' },
-  ],
-  'Entrées': [
-    { name: 'Tous', image: '/icons/tous.png' },
-  ],
-  'Desserts': [
-    { name: 'Tous', image: '/icons/tous.png' },
-  ],
-};
+const QUICK_FILTERS = [
+  { name: 'Tous', icon: '✨' },
+  { name: 'Tartes & Quiches', icon: '🥧' },
+  { name: 'Pâtes & Lasagnes', icon: '🍝' },
+  { name: 'Mijotés', icon: '🍲' },
+  { name: 'Rapide', icon: '⚡' },
+];
+
+const INITIAL_RECIPES = [
+  {
+    id: 1,
+    title: 'Tarte au thon',
+    category: 'Plats',
+    subCategory: 'Tartes & Quiches',
+    difficulty: 'Facile',
+    servings: 4,
+    prepTime: '40 min',
+    image: '/images/recipes/tarte-thon.jpg',
+    description: 'Une tarte savoureuse et rapide à préparer, parfaite pour un repas en famille !',
+  },
+  {
+    id: 2,
+    title: 'Lasagnes à la bolognaise',
+    category: 'Plats',
+    subCategory: 'Pâtes & Lasagnes',
+    difficulty: 'Moyen',
+    servings: 6,
+    prepTime: '1h 15 min',
+    image: '/images/recipes/lasagnes.jpg',
+    description: 'Un grand classique généreux et réconfortant avec sa sauce mijotée.',
+  },
+];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('recipes');
-
-  // --- ÉTATS RECETTES ---
-  const [recipes, setRecipes] = useState([]);
-  const [selectedMainCat, setSelectedMainCat] = useState('Plats');
+  const [activeTab, setActiveTab] = useState('recipes'); // 'recipes', 'planning', 'shopping'
+  const [selectedMainCat, setSelectedMainCat] = useState(null);
   const [selectedSubCat, setSelectedSubCat] = useState('Tous');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeRecipe, setActiveRecipe] = useState(null);
-  const [recipeDetailTab, setRecipeDetailTab] = useState('ingredients');
 
-  // --- ÉTATS CRÉATION / ÉDITION ---
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [formTitle, setFormTitle] = useState('');
-  const [formCategory, setFormCategory] = useState('Plats');
-  const [formSubCategory, setFormSubCategory] = useState('Tartes & Quiches');
-  const [formServings, setFormServings] = useState(4);
-  const [formIngredients, setFormIngredients] = useState([{ name: '', quantity: '' }]);
-  const [formInstructions, setFormInstructions] = useState('');
-
-  // --- ÉTATS SELECTION NOMBRE DE PERSONNES ---
-  const [selectedGuests, setSelectedGuests] = useState(4);
-
-  // --- ÉTATS PLANNING & AGENDA 21 JOURS ---
-  const [startDate, setStartDate] = useState(() => {
-    const saved = localStorage.getItem('agenda_start_date');
-    return saved || new Date().toISOString().split('T')[0];
+  // Filtrage des recettes
+  const filteredRecipes = INITIAL_RECIPES.filter((recipe) => {
+    const matchesMain = !selectedMainCat || recipe.category === selectedMainCat;
+    const matchesSub = selectedSubCat === 'Tous' || recipe.subCategory === selectedSubCat;
+    const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesMain && matchesSub && matchesSearch;
   });
-
-  const [plannedMeals, setPlannedMeals] = useState(() => {
-    const saved = localStorage.getItem('planned_meals_v2');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [agenda, setAgenda] = useState(() => {
-    const saved = localStorage.getItem('agenda_v2');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [planningSubTab, setPlanningSubTab] = useState('meals');
-
-  useEffect(() => {
-    localStorage.setItem('planned_meals_v2', JSON.stringify(plannedMeals));
-  }, [plannedMeals]);
-
-  useEffect(() => {
-    localStorage.setItem('agenda_v2', JSON.stringify(agenda));
-  }, [agenda]);
-
-  useEffect(() => {
-    localStorage.setItem('agenda_start_date', startDate);
-  }, [startDate]);
-
-  useEffect(() => {
-    fetchRecipes();
-  }, []);
-
-  const fetchRecipes = async () => {
-    const { data } = await supabase.from('recipes').select('*').order('id', { ascending: false });
-    if (data) setRecipes(data);
-  };
-
-  useEffect(() => {
-    if (activeRecipe) {
-      setSelectedGuests(activeRecipe.servings || 4);
-    }
-  }, [activeRecipe]);
-
-  // --- GÉNÉRATION DES 21 JOURS ---
-  const generateDays = () => {
-    const daysList = [];
-    const baseDate = startDate ? new Date(startDate) : new Date();
-
-    for (let i = 0; i < 21; i++) {
-      const currentDate = new Date(baseDate);
-      currentDate.setDate(baseDate.getDate() + i);
-
-      const dayKey = currentDate.toISOString().split('T')[0];
-      const formattedLabel = currentDate.toLocaleDateString('fr-FR', {
-        weekday: 'short',
-        day: '2-digit',
-        month: '2-digit',
-      });
-
-      daysList.push({ id: dayKey, label: formattedLabel });
-    }
-    return daysList;
-  };
-
-  const days = generateDays();
-
-  // --- FORMULAIRE RECETTE ---
-  const openCreateForm = () => {
-    setEditingId(null);
-    setFormTitle('');
-    setFormCategory('Plats');
-    const firstSub = SUB_CATEGORIES['Plats']?.[0]?.name || 'Tous';
-    setFormSubCategory(firstSub);
-    setFormServings(4);
-    setFormIngredients([{ name: '', quantity: '' }]);
-    setFormInstructions('');
-    setIsFormOpen(true);
-  };
-
-  const openEditForm = (recipe) => {
-    setEditingId(recipe.id);
-    setFormTitle(recipe.title);
-    setFormCategory(recipe.category || 'Plats');
-    setFormSubCategory(recipe.subCategory || 'Tous');
-    setFormServings(recipe.servings || 4);
-    setFormIngredients(
-      recipe.ingredients?.length > 0
-        ? JSON.parse(JSON.stringify(recipe.ingredients))
-        : [{ name: '', quantity: '' }]
-    );
-    setFormInstructions(recipe.instructions || '');
-    setIsFormOpen(true);
-  };
-
-  const handleIngredientChange = (index, field, value) => {
-    const updated = [...formIngredients];
-    updated[index][field] = value;
-    setFormIngredients(updated);
-  };
-
-  const addIngredientField = () => {
-    setFormIngredients([...formIngredients, { name: '', quantity: '' }]);
-  };
-
-  const removeIngredientField = (index) => {
-    setFormIngredients(formIngredients.filter((_, i) => i !== index));
-  };
-
-  const handleSaveRecipe = async (e) => {
-    e.preventDefault();
-    if (!formTitle.trim()) return;
-
-    const filteredIngs = formIngredients.filter((ing) => ing.name.trim() !== '');
-
-    const recipeData = {
-      title: formTitle,
-      category: formCategory,
-      subCategory: formSubCategory,
-      servings: Number(formServings) || 4,
-      ingredients: filteredIngs,
-      instructions: formInstructions,
-    };
-
-    if (editingId) {
-      const { error } = await supabase.from('recipes').update(recipeData).eq('id', editingId);
-      if (error) {
-        alert(`Erreur lors de la modification : ${error.message}`);
-        return;
-      }
-      setRecipes(recipes.map((r) => (r.id === editingId ? { ...r, ...recipeData } : r)));
-      if (activeRecipe?.id === editingId) {
-        setActiveRecipe({ ...activeRecipe, ...recipeData });
-      }
-    } else {
-      const { data, error } = await supabase.from('recipes').insert([recipeData]).select();
-      if (error) {
-        alert(`Erreur lors de la création : ${error.message}`);
-        return;
-      }
-      if (data) {
-        setRecipes([data[0], ...recipes]);
-      }
-    }
-
-    setIsFormOpen(false);
-  };
-
-  const deleteRecipe = async (id) => {
-    if (!window.confirm('Voulez-vous vraiment supprimer cette recette ?')) return;
-    const { error } = await supabase.from('recipes').delete().eq('id', id);
-    if (!error) {
-      setRecipes(recipes.filter((r) => r.id !== id));
-      setActiveRecipe(null);
-    }
-  };
-
-  // --- FILTRAGE ---
-  const filteredRecipes = recipes.filter((r) => {
-    const matchMain = (r.category || 'Plats') === selectedMainCat;
-    const matchSub = selectedSubCat === 'Tous' || r.subCategory === selectedSubCat;
-    const matchSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchMain && matchSub && matchSearch;
-  });
-
-  // --- PLANNING & COURSES ---
-  const addRecipeToPlanning = (recipe) => {
-    const newItem = {
-      id: Date.now(),
-      recipeId: recipe.id,
-      recipeTitle: recipe.title,
-      baseServings: recipe.servings || 4,
-      ingredients: recipe.ingredients || [],
-      guests: selectedGuests,
-      assignedDay: null,
-      assignedSlot: null,
-    };
-    setPlannedMeals([...plannedMeals, newItem]);
-    alert(`"${recipe.title}" (${selectedGuests} pers.) ajouté au panier !`);
-  };
-
-  const removePlannedMeal = (id) => {
-    setPlannedMeals(plannedMeals.filter((m) => m.id !== id));
-    
-    const updatedAgenda = { ...agenda };
-    Object.keys(updatedAgenda).forEach((key) => {
-      if (updatedAgenda[key] === id) {
-        delete updatedAgenda[key];
-      }
-    });
-    setAgenda(updatedAgenda);
-  };
-
-  const updateGuests = (id, delta) => {
-    setPlannedMeals(
-      plannedMeals.map((item) =>
-        item.id === id ? { ...item, guests: Math.max(1, item.guests + delta) } : item
-      )
-    );
-  };
-
-  const assignMealToAgenda = (dayId, slot, mealId) => {
-    const key = `${dayId}-${slot}`;
-    setAgenda((prev) => ({ ...prev, [key]: mealId ? Number(mealId) : null }));
-
-    setPlannedMeals((prev) =>
-      prev.map((meal) =>
-        meal.id === Number(mealId) ? { ...meal, assignedDay: dayId, assignedSlot: slot } : meal
-      )
-    );
-  };
-
-  const getShoppingList = () => {
-    const totals = {};
-    plannedMeals.forEach((meal) => {
-      const baseServings = meal.baseServings || 4;
-      const ratio = meal.guests / baseServings;
-      meal.ingredients.forEach((ing) => {
-        const key = ing.name.toLowerCase().trim();
-        const qty = (Number(ing.quantity) || 0) * ratio;
-        if (totals[key]) {
-          totals[key].quantity += qty;
-        } else {
-          totals[key] = { name: ing.name, quantity: qty };
-        }
-      });
-    });
-    return Object.values(totals);
-  };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-semibold relative">
-      {/* BANNIÈRE SUPÉRIEURE */}
-      <header className="relative bg-emerald-800 bg-[url('/banner.jpg')] bg-cover bg-center text-white shadow-md h-20 flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
-        <div 
-          className="relative flex items-center cursor-pointer" 
-          onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
-        >
-          <img 
-            src="/logo.png" 
-            alt="Logo" 
-            className="h-14 w-auto object-contain drop-shadow-md rounded-xl"
-            onError={(e) => { e.target.style.display = 'none'; }}
-          />
+    <div className="min-h-screen bg-[#FAF7F2] text-slate-800 flex flex-col font-sans relative pb-28">
+
+      {/* 1. EN-TÊTE CHALEUREUX */}
+      <header className="px-5 pt-6 pb-2 flex justify-between items-center max-w-2xl mx-auto w-full">
+        <button className="p-2.5 bg-white rounded-full shadow-sm text-slate-700 hover:bg-slate-50 transition">
+          ☰
+        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">🌱</span>
+          <span className="font-extrabold text-xl text-[#2C4A34] tracking-wide">GILMEAL</span>
         </div>
+        <button className="p-2.5 bg-white rounded-full shadow-sm text-slate-700 hover:bg-slate-50 transition relative">
+          👤
+          <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#EF6A45] rounded-full border-2 border-white"></span>
+        </button>
       </header>
 
-      {/* CONTENU PRINCIPAL */}
-      <main className="flex-1 p-4 max-w-2xl mx-auto w-full pb-28">
-        {/* SECTION RECETTES */}
-        {activeTab === 'recipes' && !activeRecipe && (
-          <div className="space-y-4 pt-1">
-            {/* FILTRE CATÉGORIES PRINCIPALES */}
-            <div className="flex gap-2 overflow-x-auto pb-2 pt-1 px-1 scrollbar-none">
+      {/* 2. CONTENU PRINCIPAL */}
+      <main className="px-4 space-y-6 max-w-2xl mx-auto w-full flex-1 mt-2">
+        
+        {activeTab === 'recipes' && (
+          <>
+            {/* SALUTATION */}
+            <div>
+              <span className="font-handwriting text-2xl text-[#3D6647] font-bold block mb-0.5">
+                Bonjour ! ✨
+              </span>
+              <h1 className="text-2xl font-black text-slate-800 leading-tight">
+                Qu'est-ce qu'on cuisine aujourd'hui ? <span className="text-[#EF6A45]">❤️</span>
+              </h1>
+            </div>
+
+            {/* CARTOUCHE DE CATÉGORIES EN PASTEL */}
+            <div className="grid grid-cols-5 gap-2 overflow-x-auto pb-1 scrollbar-none">
               {MAIN_CATEGORIES.map((cat) => {
                 const isSelected = selectedMainCat === cat.name;
                 return (
                   <button
                     key={cat.name}
-                    onClick={() => {
-                      setSelectedMainCat(cat.name);
-                      setSelectedSubCat('Tous');
-                    }}
-                    className={`flex flex-col items-center justify-center min-w-[135px] p-2.5 rounded-2xl text-xs font-bold shrink-0 transition-all ${
-                      isSelected
-                        ? 'bg-emerald-600 text-white shadow-md scale-105'
-                        : 'bg-white text-slate-700 border border-slate-200 hover:border-emerald-300'
+                    onClick={() => setSelectedMainCat(isSelected ? null : cat.name)}
+                    className={`${cat.bg} p-3 rounded-3xl flex flex-col items-center justify-between h-32 text-center transition-all transform hover:scale-105 shadow-sm border-2 ${
+                      isSelected ? 'border-[#3D6647]' : 'border-transparent'
                     }`}
                   >
                     <img
-                      src={cat.image}
+                      src={cat.img}
                       alt={cat.name}
-                      className="w-10 h-10 object-contain mb-1.5 shrink-0"
+                      className="w-12 h-12 object-contain my-auto"
                       onError={(e) => { e.target.style.display = 'none'; }}
                     />
-                    <span className="text-center line-clamp-1">{cat.name}</span>
+                    <span className="text-[11px] font-bold text-slate-700 leading-tight">
+                      {cat.name}
+                    </span>
                   </button>
                 );
               })}
             </div>
 
-            {/* FILTRE SOUS-CATÉGORIES AVEC IMAGES */}
-            {SUB_CATEGORIES[selectedMainCat] && (
-              <div className="flex gap-2 overflow-x-auto pb-2 pt-1 px-1 scrollbar-none">
-                {SUB_CATEGORIES[selectedMainCat].map((sub) => {
-                  const isSelected = selectedSubCat === sub.name;
-                  return (
-                    <button
-                      key={sub.name}
-                      onClick={() => setSelectedSubCat(sub.name)}
-                      className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold w-auto shrink-0 whitespace-nowrap transition-all ${
-                        isSelected
-                          ? 'bg-slate-800 text-white shadow-sm'
-                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                      }`}
-                    >
-                      {sub.image && (
-                        <img
-                          src={sub.image}
-                          alt={sub.name}
-                          className="w-4 h-4 object-contain shrink-0"
-                          onError={(e) => { e.target.style.display = 'none'; }}
-                        />
-                      )}
-                      <span>{sub.name}</span>
-                    </button>
-                  );
-                })}
+            {/* RECHERCHE ET BOUTON D'AJOUT ORANGE */}
+            <div className="flex gap-2.5 items-center">
+              <div className="flex-1 bg-white rounded-2xl p-3 shadow-sm flex items-center gap-2 border border-slate-100">
+                <span className="text-slate-400">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Qu'est-ce qu'on mange aujourd'hui ?"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full text-xs font-semibold focus:outline-none bg-transparent placeholder:text-slate-400"
+                />
               </div>
-            )}
-
-            {/* BARRE DE RECHERCHE + BOUTON NOUVELLE RECETTE */}
-            <div className="flex gap-2 items-center">
-              <input
-                type="text"
-                placeholder="🔍 Rechercher une recette..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-3/4 p-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <button
-                onClick={openCreateForm}
-                title="Nouvelle recette"
-                className="w-1/4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-[42px] rounded-xl shadow transition flex items-center justify-center text-base shrink-0"
-              >
-                + 📖
+              <button className="bg-[#EF6A45] hover:bg-[#d95a37] active:scale-95 text-white px-4 py-3 rounded-2xl shadow-sm text-xs font-bold flex items-center gap-1.5 shrink-0 transition">
+                <span className="text-base leading-none">+</span> Ajouter
               </button>
             </div>
 
-            {/* LISTE DES RECETTES */}
-            <div className="grid gap-3">
-              {filteredRecipes.length === 0 ? (
-                <p className="text-center text-slate-400 py-6 text-sm">Aucune recette disponible.</p>
-              ) : (
-                filteredRecipes.map((r) => (
-                  <div
-                    key={r.id}
-                    onClick={() => setActiveRecipe(r)}
-                    className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center cursor-pointer hover:border-emerald-500 transition"
-                  >
-                    <div>
-                      <span className="font-bold text-slate-800 block">{r.title}</span>
-                      <span className="text-[11px] text-slate-400">
-                        Portion de base : {r.servings || 4} pers.
-                      </span>
-                    </div>
-                    <span className="text-slate-400 text-sm">➜</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* DÉTAIL RECETTE */}
-        {activeTab === 'recipes' && activeRecipe && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
-            <div className="flex justify-between items-center">
-              <button
-                onClick={() => setActiveRecipe(null)}
-                className="text-xs font-bold text-slate-500 hover:text-slate-800"
-              >
-                ⬅ Retour aux recettes
-              </button>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => openEditForm(activeRecipe)}
-                  className="text-xs text-blue-600 font-bold hover:underline"
-                >
-                  ✏️ Modifier
-                </button>
-                <button
-                  onClick={() => deleteRecipe(activeRecipe.id)}
-                  className="text-xs text-red-500 font-bold hover:underline"
-                >
-                  🗑️ Supprimer
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <h2 className="text-xl font-bold text-slate-800">{activeRecipe.title}</h2>
-              <p className="text-xs text-slate-500">
-                Recette créée pour <strong className="text-slate-700">{activeRecipe.servings || 4} pers.</strong>
-              </p>
-            </div>
-
-            <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 flex justify-between items-center">
-              <span className="text-xs font-bold text-emerald-900">
-                Préparer pour :
-              </span>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 bg-white border border-emerald-300 rounded-lg p-1">
+            {/* FILTRES RAPIDES */}
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {QUICK_FILTERS.map((filter) => {
+                const isSelected = selectedSubCat === filter.name;
+                return (
                   <button
-                    onClick={() => setSelectedGuests(Math.max(1, selectedGuests - 1))}
-                    className="w-6 h-6 bg-emerald-100 text-emerald-800 rounded font-bold text-xs"
+                    key={filter.name}
+                    onClick={() => setSelectedSubCat(filter.name)}
+                    className={`px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 shadow-sm ${
+                      isSelected
+                        ? 'bg-[#2C4A34] text-white'
+                        : 'bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
                   >
-                    -
+                    <span>{filter.icon}</span>
+                    <span>{filter.name}</span>
                   </button>
-                  <span className="text-xs font-bold text-slate-800 px-2">
-                    {selectedGuests} pers.
-                  </span>
-                  <button
-                    onClick={() => setSelectedGuests(selectedGuests + 1)}
-                    className="w-6 h-6 bg-emerald-100 text-emerald-800 rounded font-bold text-xs"
-                  >
-                    +
-                  </button>
-                </div>
+                );
+              })}
+            </div>
 
-                <button
-                  onClick={() => addRecipeToPlanning(activeRecipe)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl shadow"
+            {/* LISTE DES RECETTES (CARTES CHALEUREUSES) */}
+            <div className="space-y-4 pt-2">
+              {filteredRecipes.map((recipe) => (
+                <div
+                  key={recipe.id}
+                  className="bg-white rounded-[28px] shadow-sm border border-slate-100 overflow-hidden flex flex-col md:flex-row transition hover:shadow-md"
                 >
-                  + Ajout panier
-                </button>
-              </div>
-            </div>
-
-            <div className="flex border-b border-slate-200">
-              <button
-                onClick={() => setRecipeDetailTab('ingredients')}
-                className={`flex-1 py-2 text-xs font-bold border-b-2 ${
-                  recipeDetailTab === 'ingredients'
-                    ? 'border-emerald-600 text-emerald-600'
-                    : 'border-transparent text-slate-400'
-                }`}
-              >
-                Ingrédients ({selectedGuests} pers.)
-              </button>
-              <button
-                onClick={() => setRecipeDetailTab('instructions')}
-                className={`flex-1 py-2 text-xs font-bold border-b-2 ${
-                  recipeDetailTab === 'instructions'
-                    ? 'border-emerald-600 text-emerald-600'
-                    : 'border-transparent text-slate-400'
-                }`}
-              >
-                Étapes de recette
-              </button>
-            </div>
-
-            {recipeDetailTab === 'ingredients' ? (
-              <ul className="space-y-2">
-                {activeRecipe.ingredients?.map((ing, i) => {
-                  const baseServings = activeRecipe.servings || 4;
-                  const calculatedQty = (Number(ing.quantity) || 0) * (selectedGuests / baseServings);
-                  return (
-                    <li key={i} className="flex justify-between text-sm border-b border-slate-50 py-1">
-                      <span className="text-slate-700">{ing.name}</span>
-                      <span className="font-bold text-emerald-700">
-                        {calculatedQty ? Math.round(calculatedQty * 10) / 10 : ing.quantity}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="text-sm text-slate-600 whitespace-pre-line leading-relaxed">
-                {activeRecipe.instructions || 'Aucune étape renseignée pour cette recette.'}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* MODALE FORMULAIRE */}
-        {isFormOpen && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl p-5 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4">
-              <div className="flex justify-between items-center border-b pb-2">
-                <h3 className="font-bold text-slate-800 text-lg">
-                  {editingId ? 'Modifier la recette' : 'Créer une recette'}
-                </h3>
-                <button onClick={() => setIsFormOpen(false)} className="text-slate-400 font-bold">
-                  ✕
-                </button>
-              </div>
-
-              <form onSubmit={handleSaveRecipe} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Titre</label>
-                  <input
-                    type="text"
-                    value={formTitle}
-                    onChange={(e) => setFormTitle(e.target.value)}
-                    className="w-full p-2 border border-slate-200 rounded-lg text-sm"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Catégorie</label>
-                    <select
-                      value={formCategory}
-                      onChange={(e) => {
-                        const newCat = e.target.value;
-                        setFormCategory(newCat);
-                        const firstSub = SUB_CATEGORIES[newCat]?.[0]?.name || 'Tous';
-                        setFormSubCategory(firstSub);
+                  <div className="md:w-1/2 h-48 md:h-auto relative bg-slate-100">
+                    <img
+                      src={recipe.image}
+                      alt={recipe.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80';
                       }}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
-                    >
-                      {MAIN_CATEGORIES.map((c) => (
-                        <option key={c.name} value={c.name}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Sous-Cat.</label>
-                    <select
-                      value={formSubCategory}
-                      onChange={(e) => setFormSubCategory(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"
-                    >
-                      {SUB_CATEGORIES[formCategory]?.map((sc) => (
-                        <option key={sc.name} value={sc.name}>{sc.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase mb-1">Base Pers.</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={formServings}
-                      onChange={(e) => setFormServings(e.target.value)}
-                      className="w-full p-2 border border-slate-200 rounded-lg text-sm"
-                      required
                     />
+                    <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-md rounded-full shadow-sm text-xs">
+                      🤍
+                    </button>
+                  </div>
+                  <div className="p-5 md:w-1/2 flex flex-col justify-between space-y-3">
+                    <div>
+                      <span className="bg-[#FDF2E9] text-[#EF6A45] text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-2">
+                        ★ {recipe.difficulty}
+                      </span>
+                      <h3 className="text-xl font-extrabold text-slate-800 leading-snug">
+                        {recipe.title}
+                      </h3>
+                      <div className="flex items-center gap-3 text-xs text-slate-400 font-semibold mt-1">
+                        <span>👥 {recipe.servings} pers.</span>
+                        <span>•</span>
+                        <span>⏱️ {recipe.prepTime}</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-2.5 leading-relaxed font-medium">
+                        {recipe.description}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setActiveRecipe(recipe)}
+                      className="bg-[#3D6647] hover:bg-[#2f5037] active:scale-95 text-white text-xs font-bold py-2.5 px-5 rounded-full w-fit transition flex items-center gap-2 shadow-sm"
+                    >
+                      Voir la recette ➔
+                    </button>
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                    Ingrédients (Quantité pour {formServings} pers.)
-                  </label>
-                  {formIngredients.map((ing, i) => (
-                    <div key={i} className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        placeholder="Ingrédient"
-                        value={ing.name}
-                        onChange={(e) => handleIngredientChange(i, 'name', e.target.value)}
-                        className="flex-1 p-2 border border-slate-200 rounded-lg text-sm"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Qté"
-                        value={ing.quantity}
-                        onChange={(e) => handleIngredientChange(i, 'quantity', e.target.value)}
-                        className="w-20 p-2 border border-slate-200 rounded-lg text-sm"
-                      />
-                      {formIngredients.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeIngredientField(i)}
-                          className="text-red-500 font-bold px-1"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={addIngredientField}
-                    className="text-xs font-bold text-emerald-600 hover:underline"
-                  >
-                    + Ajouter un ingrédient
-                  </button>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase mb-1">
-                    Étapes de préparation
-                  </label>
-                  <textarea
-                    rows="3"
-                    value={formInstructions}
-                    onChange={(e) => setFormInstructions(e.target.value)}
-                    className="w-full p-2 border border-slate-200 rounded-lg text-sm"
-                  ></textarea>
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-xl text-sm"
-                  >
-                    Enregistrer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsFormOpen(false)}
-                    className="bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-xl text-sm"
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </form>
+              ))}
             </div>
-          </div>
+          </>
         )}
 
-        {/* SECTION PLANNING */}
+        {/* VUE PLANNING */}
         {activeTab === 'planning' && (
-          <div className="space-y-4">
-            <div className="flex bg-slate-200 p-1 rounded-xl">
-              <button
-                onClick={() => setPlanningSubTab('meals')}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${
-                  planningSubTab === 'meals' ? 'bg-white text-slate-800 shadow' : 'text-slate-600'
-                }`}
-              >
-                Liste des repas
-              </button>
-              <button
-                onClick={() => setPlanningSubTab('agenda')}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${
-                  planningSubTab === 'agenda' ? 'bg-white text-slate-800 shadow' : 'text-slate-600'
-                }`}
-              >
-                Agenda (3 semaines)
-              </button>
-            </div>
-
-            {planningSubTab === 'meals' && (
-              <div className="space-y-3">
-                {plannedMeals.length === 0 ? (
-                  <p className="text-center text-slate-400 py-6 text-sm">
-                    Aucun repas sélectionné. Allez dans "Recettes" et cliquez sur "+ Ajout panier".
-                  </p>
-                ) : (
-                  plannedMeals.map((meal) => (
-                    <div
-                      key={meal.id}
-                      className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center gap-3"
-                    >
-                      <div>
-                        <h4 className="font-bold text-slate-800 text-sm">{meal.recipeTitle}</h4>
-                        <span
-                          className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded mt-1 ${
-                            meal.assignedDay
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {meal.assignedDay
-                            ? `Affecté : ${days.find((d) => d.id === meal.assignedDay)?.label || meal.assignedDay} (${meal.assignedSlot === 'M' ? 'Midi' : 'Soir'})`
-                            : 'N/A : Non affecté'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
-                          <button
-                            onClick={() => updateGuests(meal.id, -1)}
-                            className="w-6 h-6 bg-white rounded font-bold text-slate-600 text-xs"
-                          >
-                            -
-                          </button>
-                          <span className="text-xs font-bold text-slate-700">{meal.guests} pers</span>
-                          <button
-                            onClick={() => updateGuests(meal.id, 1)}
-                            className="w-6 h-6 bg-white rounded font-bold text-slate-600 text-xs"
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        <button
-                          onClick={() => removePlannedMeal(meal.id)}
-                          title="Supprimer du panier"
-                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition text-sm"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {planningSubTab === 'agenda' && (
-              <div className="space-y-4">
-                <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700 uppercase">
-                    📅 Date de début :
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="bg-slate-100 border border-slate-200 rounded-lg p-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-1">
-                  {days.map((day) => (
-                    <div key={day.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2">
-                      <span className="font-bold text-xs text-emerald-700 uppercase tracking-wider">
-                        {day.label}
-                      </span>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        {['M', 'S'].map((slot) => {
-                          const key = `${day.id}-${slot}`;
-                          const currentMealId = agenda[key] || '';
-                          const isAssigned = Boolean(currentMealId);
-
-                          return (
-                            <div
-                              key={slot}
-                              className={`p-2 rounded-lg border text-xs flex flex-col gap-1 transition ${
-                                isAssigned
-                                  ? 'bg-emerald-50 border-emerald-300'
-                                  : 'bg-slate-50 border-slate-200'
-                              }`}
-                            >
-                              <span className="font-bold text-slate-500">
-                                {slot === 'M' ? 'Midi' : 'Soir'}
-                              </span>
-
-                              <select
-                                value={currentMealId}
-                                onChange={(e) => assignMealToAgenda(day.id, slot, e.target.value)}
-                                className="bg-white border border-slate-200 rounded p-1 text-xs text-slate-700 focus:outline-none"
-                              >
-                                <option value="">-- Cliquer pour affecter --</option>
-                                {plannedMeals.map((m) => (
-                                  <option key={m.id} value={m.id}>
-                                    {m.recipeTitle} ({m.guests}p)
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="bg-white p-6 rounded-[28px] shadow-sm border border-slate-100 text-center space-y-3">
+            <span className="text-4xl">📅</span>
+            <h2 className="text-xl font-extrabold text-slate-800">Planning de la semaine</h2>
+            <p className="text-xs text-slate-500">Organise tes repas jours par jours.</p>
           </div>
         )}
 
-        {/* SECTION PANIER / COURSES */}
+        {/* VUE COURSES */}
         {activeTab === 'shopping' && (
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-            <h2 className="text-lg font-bold text-slate-800">🛒 Liste de courses finale</h2>
-            {getShoppingList().length === 0 ? (
-              <p className="text-slate-400 text-sm">
-                Aucun ingrédient dans le panier. Ajoutez des recettes au planning.
-              </p>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {getShoppingList().map((item, index) => (
-                  <li key={index} className="py-2.5 flex items-center justify-between">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 border-slate-300"
-                      />
-                      <span className="text-slate-700 capitalize text-sm font-medium">{item.name}</span>
-                    </label>
-                    <span className="bg-emerald-50 text-emerald-700 font-bold text-xs px-2.5 py-1 rounded-full">
-                      x {Math.round(item.quantity * 10) / 10}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+          <div className="bg-white p-6 rounded-[28px] shadow-sm border border-slate-100 text-center space-y-3">
+            <span className="text-4xl">🛒</span>
+            <h2 className="text-xl font-extrabold text-slate-800">Liste de courses</h2>
+            <p className="text-xs text-slate-500">Tes ingrédients générés automatiquement.</p>
           </div>
         )}
+
       </main>
 
-      {/* BARRE DE NAVIGATION FLOTTANTE (PLUS ÉPAISSE) */}
+      {/* 3. BARRE DE NAVIGATION FLOTTANTE BOMBÉE */}
       <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
-        <nav className="pointer-events-auto flex gap-2 bg-slate-900/90 backdrop-blur-md p-3 rounded-2xl border border-white/20 shadow-2xl">
+        <nav className="pointer-events-auto flex gap-6 bg-white/90 backdrop-blur-md px-6 py-2.5 rounded-full shadow-xl border border-slate-100 items-center">
           <button
             onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
-            className={`px-6 py-3 rounded-xl text-xl font-bold transition ${
-              activeTab === 'recipes' 
-                ? 'bg-emerald-600 text-white shadow-lg' 
-                : 'text-slate-300 hover:text-white hover:bg-white/10'
+            className={`flex flex-col items-center gap-0.5 text-[10px] font-extrabold transition ${
+              activeTab === 'recipes' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            📖
+            <div className={`p-2 rounded-full ${activeTab === 'recipes' ? 'bg-[#E8F3EB]' : ''}`}>
+              🏠
+            </div>
+            Accueil
           </button>
+
           <button
             onClick={() => setActiveTab('planning')}
-            className={`px-6 py-3 rounded-xl text-xl font-bold transition ${
-              activeTab === 'planning' 
-                ? 'bg-emerald-600 text-white shadow-lg' 
-                : 'text-slate-300 hover:text-white hover:bg-white/10'
+            className={`flex flex-col items-center gap-0.5 text-[10px] font-extrabold transition ${
+              activeTab === 'planning' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            📅
+            <div className={`p-2 rounded-full ${activeTab === 'planning' ? 'bg-[#E8F3EB]' : ''}`}>
+              📅
+            </div>
+            Planning
           </button>
+
           <button
             onClick={() => setActiveTab('shopping')}
-            className={`px-6 py-3 rounded-xl text-xl font-bold transition ${
-              activeTab === 'shopping' 
-                ? 'bg-emerald-600 text-white shadow-lg' 
-                : 'text-slate-300 hover:text-white hover:bg-white/10'
+            className={`flex flex-col items-center gap-0.5 text-[10px] font-extrabold transition ${
+              activeTab === 'shopping' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            🛒
+            <div className={`p-2 rounded-full ${activeTab === 'shopping' ? 'bg-[#E8F3EB]' : ''}`}>
+              🛒
+            </div>
+            Courses
           </button>
         </nav>
       </div>
+
     </div>
   );
 }
