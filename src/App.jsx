@@ -510,7 +510,7 @@ export default function App() {
 
             alt="GILMEAL Logo"
 
-            className="h-9 w-auto object-contain"
+            className="h-12 w-auto object-contain"
 
             onError={(e) => { e.target.style.display = 'none'; }}
 
