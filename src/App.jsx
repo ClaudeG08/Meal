@@ -149,6 +149,14 @@ export default function App() {
     return saved || new Date().toISOString().split('T')[0];
   });
 
+const [endDate, setEndDate] = useState(() => {
+  const saved = localStorage.getItem('agenda_end_date');
+  if (saved) return saved;
+  const d = new Date();
+  d.setDate(d.getDate() + 20);
+  return d.toISOString().split('T')[0];
+});
+
   const [plannedMeals, setPlannedMeals] = useState(() => {
     const saved = localStorage.getItem('planned_meals_v2');
     return saved ? JSON.parse(saved) : [];
@@ -173,6 +181,10 @@ export default function App() {
     localStorage.setItem('agenda_start_date', startDate);
   }, [startDate]);
 
+useEffect(() => {
+  localStorage.setItem('agenda_end_date', endDate);
+}, [endDate]);
+
   useEffect(() => {
     fetchRecipes();
   }, []);
@@ -192,24 +204,30 @@ export default function App() {
   const generateDays = () => {
     const daysList = [];
     const baseDate = startDate ? new Date(startDate) : new Date();
+const end = endDate ? new Date(endDate) : new Date(start);
 
-    for (let i = 0; i < 21; i++) {
-      const currentDate = new Date(baseDate);
-      currentDate.setDate(baseDate.getDate() + i);
+if (end < start) return daysList;
 
-      const dayKey = currentDate.toISOString().split('T')[0];
-      const formattedLabel = currentDate.toLocaleDateString('fr-FR', {
-        weekday: 'short',
-        day: '2-digit',
-        month: '2-digit',
-      });
+const diffTime = Math.abs(end - start);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-      daysList.push({ id: dayKey, label: formattedLabel });
-    }
-    return daysList;
-  };
+  for (let i = 0; i < diffDays; i++) {
+    const currentDate = new Date(start);
+    currentDate.setDate(start.getDate() + i);
 
-  const days = generateDays();
+    const dayKey = currentDate.toISOString().split('T')[0];
+    const formattedLabel = currentDate.toLocaleDateString('fr-FR', {
+      weekday: 'short',
+      day: '2-digit',
+      month: '2-digit',
+    });
+
+    daysList.push({ id: dayKey, label: formattedLabel });
+  }
+  return daysList;
+};
+
+const days = generateDays();
 
   // --- FORMULAIRE RECETTE ---
   const openCreateForm = () => {
@@ -1059,7 +1077,7 @@ export default function App() {
                   planningSubTab === 'agenda' ? 'bg-[#3D6647] text-white shadow' : 'text-slate-500'
                 }`}
               >
-                Agenda (3 semaines)
+                Agenda
               </button>
             </div>
 
@@ -1124,77 +1142,95 @@ export default function App() {
               </div>
             )}
 
-            {planningSubTab === 'agenda' && (
-              <div className="space-y-4">
-                <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <label className="text-xs font-extrabold text-slate-700 uppercase whitespace-nowrap">
-                      📅 Début :
-                    </label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="bg-[#FAF7F2] border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none w-full"
-                    />
-                  </div>
+           {planningSubTab === 'agenda' && (
+  <div className="space-y-4">
+    {/* PANNEAU DE CONFIGURATION DES DATES ET BOUTON */}
+    <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-3">
+      {/* Date de début */}
+      <div className="flex items-center justify-between gap-2">
+        <label className="text-xs font-extrabold text-slate-700 uppercase whitespace-nowrap">
+          📅 Début :
+        </label>
+        <input
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          className="bg-[#FAF7F2] border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none w-1/2"
+        />
+      </div>
 
-                  <button
-                    onClick={handleRandomAgendaFill}
-                    className="w-full sm:w-auto bg-[#EF6A45] hover:bg-[#d95a37] active:scale-95 text-white text-xs font-extrabold px-4 py-2.5 rounded-2xl shadow-sm flex items-center justify-center gap-2 transition"
+      {/* Date de fin (en dessous de la date de début) */}
+      <div className="flex items-center justify-between gap-2">
+        <label className="text-xs font-extrabold text-slate-700 uppercase whitespace-nowrap">
+          🏁 Fin :
+        </label>
+        <input
+          type="date"
+          value={endDate}
+          min={startDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          className="bg-[#FAF7F2] border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none w-1/2"
+        />
+      </div>
+
+      {/* Bouton de génération automatique (en dessous des deux dates) */}
+      <button
+        onClick={handleRandomAgendaFill}
+        className="w-full bg-[#EF6A45] hover:bg-[#d95a37] active:scale-95 text-white text-xs font-extrabold px-4 py-2.5 rounded-2xl shadow-sm flex items-center justify-center gap-2 transition mt-1"
+      >
+        <span>🎲</span>
+        <span>Remplir automatiquement ({days.length}j)</span>
+      </button>
+    </div>
+
+    {/* LISTE DES JOURS GÉNÉRÉS */}
+    <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-1">
+      {days.map((day) => (
+        <div key={day.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm space-y-2">
+          <span className="font-extrabold text-xs text-[#3D6647] uppercase tracking-wider block">
+            {day.label}
+          </span>
+
+          <div className="grid grid-cols-2 gap-2">
+            {['M', 'S'].map((slot) => {
+              const key = `${day.id}-${slot}`;
+              const currentMealId = agenda[key] || '';
+              const isAssigned = Boolean(currentMealId);
+
+              return (
+                <div
+                  key={slot}
+                  className={`p-2.5 rounded-2xl border text-xs flex flex-col gap-1 transition ${
+                    isAssigned
+                      ? 'bg-[#E8F3EB] border-[#3D6647]/30'
+                      : 'bg-[#FAF7F2] border-slate-100'
+                  }`}
+                >
+                  <span className="font-extrabold text-slate-500 text-[10px]">
+                    {slot === 'M' ? 'Midi' : 'Soir'}
+                  </span>
+
+                  <select
+                    value={currentMealId}
+                    onChange={(e) => assignMealToAgenda(day.id, slot, e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl p-1.5 text-xs text-slate-700 font-semibold focus:outline-none"
                   >
-                    <span>🎲</span>
-                    <span>Remplir automatiquement (21j)</span>
-                  </button>
+                    <option value="">-- Affecter --</option>
+                    {plannedMeals.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.recipeTitle} ({m.guests}p)
+                      </option>
+                    ))}
+                  </select>
                 </div>
-
-                <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-1">
-                  {days.map((day) => (
-                    <div key={day.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm space-y-2">
-                      <span className="font-extrabold text-xs text-[#3D6647] uppercase tracking-wider block">
-                        {day.label}
-                      </span>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        {['M', 'S'].map((slot) => {
-                          const key = `${day.id}-${slot}`;
-                          const currentMealId = agenda[key] || '';
-                          const isAssigned = Boolean(currentMealId);
-
-                          return (
-                            <div
-                              key={slot}
-                              className={`p-2.5 rounded-2xl border text-xs flex flex-col gap-1 transition ${
-                                isAssigned
-                                  ? 'bg-[#E8F3EB] border-[#3D6647]/30'
-                                  : 'bg-[#FAF7F2] border-slate-100'
-                              }`}
-                            >
-                              <span className="font-extrabold text-slate-500 text-[10px]">
-                                {slot === 'M' ? 'Midi' : 'Soir'}
-                              </span>
-
-                              <select
-                                value={currentMealId}
-                                onChange={(e) => assignMealToAgenda(day.id, slot, e.target.value)}
-                                className="bg-white border border-slate-200 rounded-xl p-1.5 text-xs text-slate-700 font-semibold focus:outline-none"
-                              >
-                                <option value="">-- Affecter --</option>
-                                {plannedMeals.map((m) => (
-                                  <option key={m.id} value={m.id}>
-                                    {m.recipeTitle} ({m.guests}p)
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
           </div>
         )}
 
