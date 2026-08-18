@@ -211,17 +211,17 @@ export default function App() {
     const filteredIngs = formIngredients.filter((ing) => ing.name.trim() !== '');
 
 const imageKeyword = encodeURIComponent(`${formTitle} food`);
-  const imageUrl = `https://source.unsplash.com/600x400/?${imageKeyword}`;
+const imageUrl = `https://source.unsplash.com/featured/800x600/?${imageKeyword}`;
 
-    const recipeData = {
-      title: formTitle,
-      category: formCategory,
-      subCategory: formSubCategory,
-      servings: Number(formServings) || 4,
-      ingredients: filteredIngs,
-      instructions: formInstructions,
-image_url: imageUrl,
-    };
+const recipeData = {
+  title: formTitle,
+  category: formCategory,
+  subCategory: formSubCategory,
+  servings: Number(formServings) || 4,
+  ingredients: filteredIngs,
+  instructions: formInstructions,
+  image_url: imageUrl,
+};
 
     if (editingId) {
       const { error } = await supabase.from('recipes').update(recipeData).eq('id', editingId);
@@ -533,20 +533,40 @@ image_url: imageUrl,
                 </div>
               ) : (
                 filteredRecipes.map((r) => (
+const recipeImg = r.image_url || `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80`;
+
+  return (
+    <div
+      key={r.id}
+      onClick={() => setActiveRecipe(r)}
+      className="relative bg-white p-3 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center cursor-pointer hover:border-[#3D6647] hover:shadow-md transition gap-3"
+    >
+      {/* Miniature photo */}
+      <img
+        src={r.image_url || `https://source.unsplash.com/featured/200x200/?${encodeURIComponent(r.title)}`}
+        alt={r.title}
+        className="w-14 h-14 rounded-2xl object-cover shrink-0 bg-slate-100"
+        onError={(e) => {
+          e.target.src = '/plats.png'; // Fallback si pas de réseau
+        }}
+      />
                   <div
                     key={r.id}
                     onClick={() => setActiveRecipe(r)}
-                    className="relative bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center cursor-pointer hover:border-[#3D6647] hover:shadow-md transition"
-                  >
-<img
-      src={r.image_url || `https://source.unsplash.com/200x200/?${encodeURIComponent(r.title + ' food')}`}
-      alt={r.title}
-      className="w-16 h-16 rounded-2xl object-cover shrink-0 bg-slate-100"
-      onError={(e) => {
-        // Image de secours si la recherche échoue
-        e.target.src = '/plats.png';
-      }}
-    />
+                  <div className="w-full h-52 rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-sm">
+  <img
+    src={
+      activeRecipe.image_url ||
+      `https://source.unsplash.com/featured/800x400/?${encodeURIComponent(activeRecipe.title + ' food')}`
+    }
+    alt={activeRecipe.title}
+    className="w-full h-full object-cover object-center"
+    onError={(e) => {
+      // Si la recherche échoue, photo culinaire générique haute qualité
+      e.target.src = 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80';
+    }}
+  />
+</div>
                     <div className="space-y-1">
                       <span className="font-extrabold text-slate-800 text-base block pr-8">{r.title}</span>
                       <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
