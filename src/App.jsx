@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 
-// Clé API gratuite à obtenir sur https://www.pexels.com/api/ (compte gratuit, clé instantanée)
 const PEXELS_API_KEY = 'XSzr1kGcMyAW5qhPBzp9RQwilhRk52anVz7Kvu1gyWKiYeqUY9u1YRa4';
-
-// Nom du bucket Supabase Storage à créer manuellement (Storage > New bucket > public)
 const RECIPE_IMAGES_BUCKET = 'recipe-images';
 
 const MAIN_CATEGORIES = [
@@ -57,13 +54,11 @@ const UNITS = [
   { value: 'boîte(s)', label: 'boîte(s)' },
 ];
 
-// Image par défaut dynamique selon la catégorie principale
 const getDefaultImage = (category) => {
   const cat = MAIN_CATEGORIES.find((c) => c.name === category);
   return cat ? cat.image : '/plats.png';
 };
 
-// Upload d'une image depuis l'appareil vers Supabase Storage, renvoie l'URL publique
 const uploadRecipeImage = async (file) => {
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
@@ -78,7 +73,6 @@ const uploadRecipeImage = async (file) => {
   return data.publicUrl;
 };
 
-// Recherche d'images sur Pexels à partir d'un mot-clé (nom de recette)
 const searchRecipeImages = async (query) => {
   const response = await fetch(
     `https://api.pexels.com/v1/search?query=${encodeURIComponent(query + ' recette plat')}&per_page=6`,
@@ -134,7 +128,7 @@ export default function App() {
   const [formIngredients, setFormIngredients] = useState([{ name: '', quantity: '' }]);
   const [formInstructions, setFormInstructions] = useState('');
 
-  // --- ÉTATS SÉLECTEUR D'IMAGE (upload / recherche) ---
+  // --- ÉTATS SÉLECTEUR D'IMAGE ---
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isSearchingImages, setIsSearchingImages] = useState(false);
   const [imageSearchResults, setImageSearchResults] = useState([]);
@@ -169,6 +163,15 @@ export default function App() {
 
   const [planningSubTab, setPlanningSubTab] = useState('meals');
 
+  // --- ÉTATS LISTE DE COURSES AUTONOME ---
+  const [shoppingList, setShoppingList] = useState(() => {
+    const saved = localStorage.getItem('shopping_list_v1');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [newIngredientName, setNewIngredientName] = useState('');
+  const [newIngredientQty, setNewIngredientQty] = useState('');
+  const [newIngredientUnit, setNewIngredientUnit] = useState('g');
+
   useEffect(() => {
     localStorage.setItem('planned_meals_v2', JSON.stringify(plannedMeals));
   }, [plannedMeals]);
@@ -186,6 +189,10 @@ export default function App() {
   }, [endDate]);
 
   useEffect(() => {
+    localStorage.setItem('shopping_list_v1', JSON.stringify(shoppingList));
+  }, [shoppingList]);
+
+  useEffect(() => {
     fetchRecipes();
   }, []);
 
@@ -200,7 +207,73 @@ export default function App() {
     }
   }, [activeRecipe]);
 
-  // --- GÉNÉRATION DES JOURS ---
+  // --- GÉNÉRATION DES COURSES DEPUIS LE PLANNING ---
+  const generateShoppingListFromPlanning = () => {
+    const totals = {};
+    plannedMeals.forEach((meal) => {
+      const baseServings = meal.baseServings || 4;
+      const ratio = meal.guests / baseServings;
+      meal.ingredients.forEach((ing) => {
+        const unit = ing.unit || 'g';
+        const key = `${ing.name.toLowerCase().trim()}_${unit}`;
+        const qty = (Number(ing.quantity) || 0) * ratio;
+        if (totals[key]) {
+          totals[key].quantity += qty;
+        } else {
+          totals[key] = {
+            id: Date.now() + Math.random(),
+            name: ing.name,
+            quantity: qty,
+            unit: unit,
+            checked: false,
+          };
+        }
+      });
+    });
+
+    const newList = Object.values(totals);
+    setShoppingList(newList);
+  };
+
+  const addCustomShoppingItem = (e) => {
+    e.preventDefault();
+    if (!newIngredientName.trim()) return;
+
+    const newItem = {
+      id: Date.now(),
+      name: newIngredientName.trim(),
+      quantity: Number(newIngredientQty) || 0,
+      unit: newIngredientUnit,
+      checked: false,
+    };
+
+    setShoppingList([...shoppingList, newItem]);
+    setNewIngredientName('');
+    setNewIngredientQty('');
+    setNewIngredientUnit('g');
+  };
+
+  const toggleShoppingItem = (id) => {
+    setShoppingList(
+      shoppingList.map((item) =>
+        item.id === id ? { ...item, checked: !item.checked } : item
+      )
+    );
+  };
+
+  const updateShoppingItem = (id, field, value) => {
+    setShoppingList(
+      shoppingList.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  const removeShoppingItem = (id) => {
+    setShoppingList(shoppingList.filter((item) => item.id !== id));
+  };
+
+  // --- GENERATION DES JOURS ---
   const generateDays = () => {
     const daysList = [];
     const start = startDate ? new Date(startDate) : new Date();
@@ -259,7 +332,7 @@ export default function App() {
     } catch (err) {
       console.error("Erreur lors de l'upload de l'image :", err);
       setImageSearchError(`Échec de l'envoi de la photo : ${err.message}`);
-    } finally{
+    } finally {
       setIsUploadingImage(false);
       e.target.value = '';
     }
@@ -428,25 +501,6 @@ export default function App() {
     );
   };
 
-  const getShoppingList = () => {
-    const totals = {};
-    plannedMeals.forEach((meal) => {
-      const baseServings = meal.baseServings || 4;
-      const ratio = meal.guests / baseServings;
-      meal.ingredients.forEach((ing) => {
-        const unit = ing.unit || 'g';
-        const key = ing.name.toLowerCase().trim();
-        const qty = (Number(ing.quantity) || 0) * ratio;
-        if (totals[key]) {
-          totals[key].quantity += qty;
-        } else {
-          totals[key] = { name: ing.name, quantity: qty, unit: unit };
-        }
-      });
-    });
-    return Object.values(totals);
-  };
-
   const handleRandomAgendaFill = () => {
     if (recipes.length === 0) {
       alert("Vous devez avoir au moins une recette enregistrée pour remplir l'agenda.");
@@ -492,55 +546,29 @@ export default function App() {
     <div className="min-h-screen bg-[#FAF7F2] text-slate-800 flex flex-col font-sans relative pb-28">
 
       {/* EN-TÊTE */}
-
       <header className="bg-white/80 backdrop-blur-md rounded-b-[32px] px-6 py-4 shadow-sm flex justify-between items-center max-w-2xl mx-auto w-full sticky top-0 z-30">
-
-
         <div
-
           className="flex items-center gap-2 cursor-pointer"
-
           onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
-
         >
-
           <img
-
             src="/logo.png"
-
             alt="GILMEAL Logo"
-
             className="h-16 w-auto object-contain"
-
             onError={(e) => { e.target.style.display = 'none'; }}
-
           />
-
           <span className="font-extrabold text-xl text-[#2C4A34] tracking-wider">
-
             Gil'Meal
-
           </span>
-
         </div>
 
-
-
         <button className="p-2 border border-slate-200 rounded-full text-slate-700 hover:bg-slate-50 transition relative">
-
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-
           </svg>
-
           <span className="absolute top-0 right-0 w-3 h-3 bg-[#EF6A45] rounded-full border-2 border-white"></span>
-
         </button>
-
       </header> 
-
-
 
       {/* CONTENU PRINCIPAL */}
       <main className="flex-1 p-4 max-w-2xl mx-auto w-full space-y-5">
@@ -844,7 +872,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODALE FORMULAIRE AVEC CHAMP URL IMAGE */}
+        {/* MODALE FORMULAIRE */}
         {isFormOpen && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4 shadow-xl border border-slate-100">
@@ -1166,9 +1194,7 @@ export default function App() {
 
             {planningSubTab === 'agenda' && (
               <div className="space-y-4">
-                {/* PANNEAU DE CONFIGURATION DES DATES ET BOUTON */}
                 <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-3">
-                  {/* Date de début */}
                   <div className="flex items-center justify-between gap-2">
                     <label className="text-xs font-extrabold text-slate-700 uppercase whitespace-nowrap">
                       📅 Début :
@@ -1181,7 +1207,6 @@ export default function App() {
                     />
                   </div>
 
-                  {/* Date de fin */}
                   <div className="flex items-center justify-between gap-2">
                     <label className="text-xs font-extrabold text-slate-700 uppercase whitespace-nowrap">
                       🏁 Fin :
@@ -1195,7 +1220,6 @@ export default function App() {
                     />
                   </div>
 
-                  {/* Bouton de génération automatique */}
                   <button
                     onClick={handleRandomAgendaFill}
                     className="w-full bg-[#EF6A45] hover:bg-[#d95a37] active:scale-95 text-white text-xs font-extrabold px-4 py-2.5 rounded-2xl shadow-sm flex items-center justify-center gap-2 transition mt-1"
@@ -1205,7 +1229,6 @@ export default function App() {
                   </button>
                 </div>
 
-                {/* LISTE DES JOURS GÉNÉRÉS */}
                 <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-1">
                   {days.map((day) => (
                     <div key={day.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm space-y-2">
@@ -1256,32 +1279,113 @@ export default function App() {
           </div>
         )}
 
-        {/* SECTION PANIER / COURSES */}
+        {/* SECTION PANIER / COURSES INTERACTIVE */}
         {activeTab === 'shopping' && (
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
-            <h2 className="text-xl font-extrabold text-slate-800">🛒 Ma liste </h2>
-            {getShoppingList().length === 0 ? (
-              <p className="text-slate-400 text-xs font-semibold">
-                Aucun ingrédient dans le panier. Ajoutez des recettes au planning.
-              </p>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {getShoppingList().map((item, index) => (
-                  <li key={index} className="py-3 flex items-center justify-between">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 text-[#3D6647] rounded-md focus:ring-[#3D6647] border-slate-300"
-                      />
-                      <span className="text-slate-700 capitalize text-xs font-bold">{item.name}</span>
-                    </label>
-                    <span className="bg-[#E8F3EB] text-[#3D6647] font-extrabold text-xs px-3 py-1 rounded-full">
-                      x {Math.round(item.quantity * 10) / 10}{item.unit}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+          <div className="space-y-4">
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-extrabold text-slate-800">🛒 Ma liste de courses</h2>
+                <button
+                  onClick={generateShoppingListFromPlanning}
+                  className="bg-[#E8F3EB] text-[#3D6647] hover:bg-[#3D6647] hover:text-white transition font-extrabold text-xs px-3 py-2 rounded-xl border border-[#3D6647]/20 flex items-center gap-1.5"
+                  title="Générer d'après votre planning de repas"
+                >
+                  🔄 Importer du planning
+                </button>
+              </div>
+
+              {/* Formulaire pour ajouter un ingrédient manuellement */}
+              <form onSubmit={addCustomShoppingItem} className="flex gap-2 items-center pt-2">
+                <input
+                  type="text"
+                  placeholder="Ajouter un article (ex: Pain, Lait...)"
+                  value={newIngredientName}
+                  onChange={(e) => setNewIngredientName(e.target.value)}
+                  className="flex-1 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#3D6647]"
+                />
+                <input
+                  type="number"
+                  placeholder="Qté"
+                  value={newIngredientQty}
+                  onChange={(e) => setNewIngredientQty(e.target.value)}
+                  className="w-16 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none"
+                />
+                <select
+                  value={newIngredientUnit}
+                  onChange={(e) => setNewIngredientUnit(e.target.value)}
+                  className="w-20 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none shrink-0"
+                >
+                  {UNITS.map((u) => (
+                    <option key={u.value} value={u.value}>
+                      {u.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="bg-[#3D6647] text-white px-3 py-2.5 rounded-xl font-extrabold text-xs hover:bg-[#2C4A34] transition shrink-0"
+                >
+                  +
+                </button>
+              </form>
+
+              {/* Liste complète des éléments */}
+              {shoppingList.length === 0 ? (
+                <p className="text-slate-400 text-xs font-semibold text-center py-4">
+                  Aucun article dans la liste. Cliquez sur "Importer du planning" ou ajoutez un élément ci-dessus.
+                </p>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {shoppingList.map((item) => (
+                    <li key={item.id} className="py-3 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-3 flex-1">
+                        <input
+                          type="checkbox"
+                          checked={item.checked}
+                          onChange={() => toggleShoppingItem(item.id)}
+                          className="w-4 h-4 text-[#3D6647] rounded-md focus:ring-[#3D6647] border-slate-300 cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) => updateShoppingItem(item.id, 'name', e.target.value)}
+                          className={`text-xs font-bold bg-transparent border-b border-transparent hover:border-slate-300 focus:border-[#3D6647] focus:outline-none flex-1 capitalize ${
+                            item.checked ? 'line-through text-slate-400' : 'text-slate-700'
+                          }`}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <input
+                          type="number"
+                          value={item.quantity || ''}
+                          onChange={(e) => updateShoppingItem(item.id, 'quantity', Number(e.target.value))}
+                          className="w-14 p-1 text-center bg-[#FAF7F2] border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                        />
+                        <select
+                          value={item.unit}
+                          onChange={(e) => updateShoppingItem(item.id, 'unit', e.target.value)}
+                          className="p-1 bg-[#FAF7F2] border border-slate-200 rounded-lg text-[10px] font-extrabold uppercase focus:outline-none"
+                        >
+                          {UNITS.map((u) => (
+                            <option key={u.value} value={u.value}>
+                              {u.label}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => removeShoppingItem(item.id)}
+                          className="p-1 text-[#EF6A45] hover:bg-red-50 rounded-lg transition text-xs font-bold"
+                          title="Supprimer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         )}
 
