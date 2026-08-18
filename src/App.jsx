@@ -238,7 +238,7 @@ export default function App() {
       setImageSearchResults([]);
     } catch (err) {
       console.error("Erreur lors de l'upload de l'image :", err);
-      setImageSearchError("Échec de l'envoi de la photo. Réessayez.");
+      setImageSearchError(`Échec de l'envoi de la photo : ${err.message}`);
     } finally {
       setIsUploadingImage(false);
       e.target.value = '';
@@ -260,7 +260,7 @@ export default function App() {
       setImageSearchResults(results);
     } catch (err) {
       console.error('Erreur lors de la recherche d\'image :', err);
-      setImageSearchError("Échec de la recherche d'image.");
+      setImageSearchError(`Échec de la recherche d'image : ${err.message}`);
     } finally {
       setIsSearchingImages(false);
     }
