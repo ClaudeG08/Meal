@@ -847,7 +847,7 @@ export default function App() {
         <nav className="pointer-events-auto flex gap-2 bg-slate-900/90 backdrop-blur-md p-3 rounded-2xl border border-white/20 shadow-2xl">
           <button
             onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
-            className={`px-5 py-3 rounded-xl text-xs font-bold transition ${
+            className={`px-6 py-3 rounded-xl text-xl font-bold transition ${
               activeTab === 'recipes' 
                 ? 'bg-emerald-600 text-white shadow-lg' 
                 : 'text-slate-300 hover:text-white hover:bg-white/10'
@@ -857,7 +857,7 @@ export default function App() {
           </button>
           <button
             onClick={() => setActiveTab('planning')}
-            className={`px-5 py-3 rounded-xl text-xs font-bold transition ${
+            className={`px-6 py-3 rounded-xl text-xl font-bold transition ${
               activeTab === 'planning' 
                 ? 'bg-emerald-600 text-white shadow-lg' 
                 : 'text-slate-300 hover:text-white hover:bg-white/10'
@@ -867,7 +867,7 @@ export default function App() {
           </button>
           <button
             onClick={() => setActiveTab('shopping')}
-            className={`px-5 py-3 rounded-xl text-xs font-bold transition ${
+            className={`px-6 py-3 rounded-xl text-xl font-bold transition ${
               activeTab === 'shopping' 
                 ? 'bg-emerald-600 text-white shadow-lg' 
                 : 'text-slate-300 hover:text-white hover:bg-white/10'
