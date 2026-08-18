@@ -52,6 +52,7 @@ const UNITS = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('recipes');
+const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   // --- ÉTATS RECETTES ---
   const [recipes, setRecipes] = useState([]);
@@ -60,6 +61,23 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeRecipe, setActiveRecipe] = useState(null);
   const [recipeDetailTab, setRecipeDetailTab] = useState('ingredients');
+const toggleFavorite = async (recipeId, currentStatus, e) => {
+    e.stopPropagation();
+    const newStatus = !currentStatus;
+
+    setRecipes((prev) =>
+      prev.map((r) => (r.id === recipeId ? { ...r, is_favorite: newStatus } : r))
+    );
+
+    const { error } = await supabase
+      .from('recipes')
+      .update({ is_favorite: newStatus })
+      .eq('id', recipeId);
+
+    if (error) {
+      console.error("Erreur lors de la mise à jour du favori :", error);
+    }
+  };
 
   // --- ÉTATS CRÉATION / ÉDITION ---
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -237,7 +255,8 @@ export default function App() {
     const matchMain = (r.category || 'Plats') === selectedMainCat;
     const matchSub = selectedSubCat === 'Tous' || r.subCategory === selectedSubCat;
     const matchSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchMain && matchSub && matchSearch;
+const matchesFavorite = showFavoritesOnly ? recipe.is_favorite : true;
+    return matchMain && matchSub && matchSearch && matchesFavorite;
   });
 
   // --- PLANNING & COURSES ---
@@ -513,6 +532,24 @@ const handleRandomAgendaFill = () => {
                     onClick={() => setActiveRecipe(r)}
                     className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center cursor-pointer hover:border-[#3D6647] hover:shadow-md transition"
                   >
+<button
+      onClick={(e) => toggleFavorite(recipe.id, recipe.is_favorite, e)}
+      className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm text-red-500 hover:scale-110 active:scale-95 transition"
+    >
+      <svg
+        className="w-5 h-5"
+        fill={recipe.is_favorite ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+        />
+      </svg>
+    </button>
                     <div className="space-y-1">
                       <span className="font-extrabold text-slate-800 text-base block">{r.title}</span>
                       <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
@@ -1001,6 +1038,30 @@ const handleRandomAgendaFill = () => {
   {/* BARRE DE NAVIGATION FLOTTANTE BOMBÉE */}
 <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
   <nav className="pointer-events-auto flex gap-8 bg-white/90 backdrop-blur-md px-8 py-2 rounded-full shadow-xl border border-slate-100 items-center">
+ {/* BOUTON FAVORIS*/}
+<button
+    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold transition shrink-0 ${
+      showFavoritesOnly
+        ? 'bg-red-500 text-white shadow-sm'
+        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+    }`}
+  >
+    <svg
+      className="w-4 h-4"
+      fill={showFavoritesOnly ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+      />
+    </svg>
+    <span>Favoris</span>
+  </button>
     
     {/* BOUTON RECETTES */}
     <button
