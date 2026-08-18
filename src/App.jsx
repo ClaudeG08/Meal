@@ -490,31 +490,68 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-slate-800 flex flex-col font-sans relative pb-28">
-);
+
       {/* EN-TÊTE */}
 
+      <header className="bg-white/80 backdrop-blur-md rounded-b-[32px] px-6 py-4 shadow-sm flex justify-between items-center max-w-2xl mx-auto w-full sticky top-0 z-30">
+
+        <button className="p-2 text-[#2C4A34] hover:bg-slate-100 rounded-full transition">
+
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
+
+          </svg>
+
+        </button>
+
+
+
         <div
+
           className="flex items-center gap-2 cursor-pointer"
+
           onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
+
         >
+
           <img
+
             src="/logo.png"
+
             alt="GILMEAL Logo"
+
             className="h-9 w-auto object-contain"
+
             onError={(e) => { e.target.style.display = 'none'; }}
+
           />
+
           <span className="font-extrabold text-xl text-[#2C4A34] tracking-wider uppercase">
+
             GILMEAL
+
           </span>
+
         </div>
 
+
+
         <button className="p-2 border border-slate-200 rounded-full text-slate-700 hover:bg-slate-50 transition relative">
+
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+
           </svg>
+
           <span className="absolute top-0 right-0 w-3 h-3 bg-[#EF6A45] rounded-full border-2 border-white"></span>
+
         </button>
-      </header>
+
+      </header> 
+
+
 
       {/* CONTENU PRINCIPAL */}
       <main className="flex-1 p-4 max-w-2xl mx-auto w-full space-y-5">
