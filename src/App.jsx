@@ -293,28 +293,39 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-slate-800 flex flex-col font-sans relative pb-28">
 
-      {/* EN-TÊTE CHALEUREUX ET ACCUEILLANT */}
-      <header className="px-5 pt-6 pb-2 flex justify-between items-center max-w-2xl mx-auto w-full">
-        <button className="p-2.5 bg-white rounded-full shadow-sm text-slate-700 hover:bg-slate-50 transition">
-          ☰
-        </button>
-        <div 
-          className="flex items-center gap-2 cursor-pointer"
-          onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
-        >
-          <img 
-            src="/logo.png" 
-            alt="GILMEAL" 
-            className="h-8 w-auto object-contain"
-            onError={(e) => { e.target.style.display = 'none'; }}
-          />
-          <span className="font-extrabold text-xl text-[#2C4A34] tracking-wide">GILMEAL</span>
-        </div>
-        <button className="p-2.5 bg-white rounded-full shadow-sm text-slate-700 hover:bg-slate-50 transition relative">
-          👤
-          <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#EF6A45] rounded-full border-2 border-white"></span>
-        </button>
-      </header>
+     {/* 1. EN-TÊTE BLANC ET ARRONDI (STYLE MAQUETTE) */}
+<header className="bg-white/80 backdrop-blur-md rounded-b-[32px] px-6 py-4 shadow-sm flex justify-between items-center max-w-2xl mx-auto w-full sticky top-0 z-30">
+  {/* Menu Hamburger */}
+  <button className="p-2 text-[#2C4A34] hover:bg-slate-100 rounded-full transition">
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  </button>
+
+  {/* Logo Centré + Nom GILMEAL */}
+  <div 
+    className="flex items-center gap-2 cursor-pointer"
+    onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
+  >
+    <img 
+      src="/logo.png" 
+      alt="GILMEAL Logo" 
+      className="h-9 w-auto object-contain"
+      onError={(e) => { e.target.style.display = 'none'; }}
+    />
+    <span className="font-extrabold text-xl text-[#2C4A34] tracking-wider uppercase">
+      GILMEAL
+    </span>
+  </div>
+
+  {/* Bouton Profil avec pastille orange */}
+  <button className="p-2 border border-slate-200 rounded-full text-slate-700 hover:bg-slate-50 transition relative">
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+    <span className="absolute top-0 right-0 w-3 h-3 bg-[#EF6A45] rounded-full border-2 border-white"></span>
+  </button>
+</header>
 
       {/* CONTENU PRINCIPAL */}
       <main className="flex-1 p-4 max-w-2xl mx-auto w-full space-y-5">
@@ -323,14 +334,33 @@ export default function App() {
         {activeTab === 'recipes' && !activeRecipe && (
           <div className="space-y-5">
             {/* SALUTATION */}
-            <div>
-              <span className="font-handwriting text-2xl text-[#3D6647] font-bold block mb-0.5">
-                Bonjour ! ✨
-              </span>
-              <h1 className="text-2xl font-black text-slate-800 leading-tight">
-                Qu'est-ce qu'on cuisine aujourd'hui ? <span className="text-[#EF6A45]">❤️</span>
-              </h1>
-            </div>
+           <div className="max-w-2xl mx-auto w-full px-4 pt-4">
+  <div className="relative rounded-[32px] overflow-hidden bg-[#FAF7F2] min-h-[160px] flex items-center p-6 shadow-sm border border-slate-100/50">
+    
+    {/* Image de fond positionnée sur la droite */}
+    <div 
+      className="absolute inset-0 bg-cover bg-right bg-no-repeat pointer-events-none"
+      style={{ backgroundImage: "url('/banner.jpg')" }} // Remplace par ton image (ex: assiette de tomates/basilic)
+    />
+
+    {/* Dégradé léger à gauche pour garantir la lisibilité du texte */}
+    <div className="absolute inset-0 bg-gradient-to-r from-[#FAF7F2] via-[#FAF7F2]/90 to-transparent w-3/4"></div>
+
+    {/* Contenu Texte */}
+    <div className="relative z-10 max-w-[260px] space-y-1">
+      <div className="flex items-center gap-2">
+        <span className="font-handwriting text-3xl text-[#3D6647] font-bold">
+          Bonjour !
+        </span>
+        <span className="text-[#EF6A45] font-extrabold text-lg">🪄</span>
+      </div>
+      <h1 className="text-xl font-extrabold text-slate-800 leading-snug">
+        Qu'est-ce qu'on cuisine aujourd'hui ? <span className="text-[#EF6A45] inline-block ml-0.5"></span>
+      </h1>
+    </div>
+
+  </div>
+</div>
 
             {/* FILTRE CATÉGORIES PRINCIPALES (CARTOUCHES PASTEL) */}
             <div className="grid grid-cols-5 gap-2 overflow-x-auto pb-1 scrollbar-none">
