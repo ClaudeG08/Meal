@@ -10,7 +10,7 @@ const MAIN_CATEGORIES = [
   { name: 'Accompagnements', image: '/accompagnements.png', bg: 'bg-[#FAF3DC]' },
   { name: 'Entrées', image: '/entrees.png', bg: 'bg-[#E8F3EB]' },
   { name: 'Desserts', image: '/desserts.png', bg: 'bg-[#F4EAF4]' },
-{ name: 'Boissons', image: '/icons/drink.png', bg: 'bg-[#E6F4F8]' },
+  { name: 'Boissons', image: '/icons/drink.png', bg: 'bg-[#E6F4F8]' },
 ];
 
 const SUB_CATEGORIES = {
@@ -19,14 +19,14 @@ const SUB_CATEGORIES = {
     { name: 'Tartes & Quiches', image: '/icons/tartes.png' },
     { name: 'Pâtes & Lasagnes', image: '/icons/pates.png' },
     { name: 'Mijotés', image: '/icons/mijotes.png' },
-{ name: 'Autres', image: '/icons/autre.png' },
+    { name: 'Autres', image: '/icons/autre.png' },
   ],
   'Viandes et poissons': [
     { name: 'Tous', image: '/icons/tous.png' },
     { name: 'Viande', image: '/icons/viande.png' },
     { name: 'Poisson', image: '/icons/poisson.png' },
     { name: 'Volaille', image: '/icons/volaille.png' },
-{ name: 'Oeufs', image: '/icons/egg.png' },
+    { name: 'Oeufs', image: '/icons/egg.png' },
   ],
   'Accompagnements': [
     { name: 'Tous', image: '/icons/tous.png' },
@@ -35,13 +35,13 @@ const SUB_CATEGORIES = {
   ],
   'Entrées': [
     { name: 'Tous', image: '/icons/tous.png' },
-{ name: 'Entrées', image: '/icons/starter.png' },
+    { name: 'Entrées', image: '/icons/starter.png' },
     { name: 'Apéritifs', image: '/icons/nachos.png' },
   ],
   'Desserts': [
     { name: 'Tous', image: '/icons/tous.png' },
-],
-'Boissons': [
+  ],
+  'Boissons': [
     { name: 'Tous', image: '/icons/tous.png' },
     { name: 'Alcools', image: '/icons/alcool.png' },
     { name: 'Chauds', image: '/icons/hot.png' },
@@ -136,7 +136,7 @@ export default function App() {
   const [formSubCategory, setFormSubCategory] = useState('Tartes & Quiches');
   const [formServings, setFormServings] = useState(4);
   const [formImageUrl, setFormImageUrl] = useState('');
-  const [formIngredients, setFormIngredients] = useState([{ name: '', quantity: '' }]);
+  const [formIngredients, setFormIngredients] = useState([{ name: '', quantity: '', unit: 'g' }]);
   const [formInstructions, setFormInstructions] = useState('');
 
   // --- ÉTATS SÉLECTEUR D'IMAGE ---
@@ -582,7 +582,7 @@ export default function App() {
       </header> 
 
       {/* CONTENU PRINCIPAL */}
-      <main className="flex-1 p-4 max-w-2xl mx-auto w-full space-y-5">
+      <main className="flex-1 p-4 max-w-2xl mx-auto w-full space-y-5 overflow-x-hidden">
 
         {/* SECTION RECETTES */}
         {activeTab === 'recipes' && !activeRecipe && (
@@ -869,7 +869,7 @@ export default function App() {
                       <span className="text-slate-700">{ing.name}</span>
                       <span className="font-extrabold text-[#3D6647] bg-[#E8F3EB] px-2.5 py-1 rounded-full flex items-center gap-1">
                         <span>{formattedQty}</span>
-                        {ing.unit && <span className="text-[10px] uppercase">{ing.unit}</span>}
+                        {ing.unit && <span className="text-[10px] text-[#3D6647] lowercase">{ing.unit}</span>}
                       </span>
                     </li>
                   );
@@ -885,8 +885,8 @@ export default function App() {
 
         {/* MODALE FORMULAIRE */}
         {isFormOpen && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4 shadow-xl border border-slate-100">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-white rounded-3xl p-4 sm:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4 shadow-xl border border-slate-100">
               <div className="flex justify-between items-center border-b pb-3">
                 <h3 className="font-extrabold text-slate-800 text-lg">
                   {editingId ? '✏️ Modifier la recette' : '📖 Créer une recette'}
@@ -1042,25 +1042,25 @@ export default function App() {
                     Ingrédients (Quantité pour {formServings} pers.)
                   </label>
                   {formIngredients.map((ing, i) => (
-                    <div key={i} className="flex gap-2 mb-2">
+                    <div key={i} className="flex gap-1.5 items-center mb-2">
                       <input
                         type="text"
                         placeholder="Ingrédient"
                         value={ing.name}
                         onChange={(e) => handleIngredientChange(i, 'name', e.target.value)}
-                        className="flex-1 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold"
+                        className="flex-1 min-w-0 p-2 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold"
                       />
                       <input
                         type="number"
                         placeholder="Qté"
                         value={ing.quantity}
                         onChange={(e) => handleIngredientChange(i, 'quantity', e.target.value)}
-                        className="w-20 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold"
+                        className="w-14 p-2 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold shrink-0"
                       />
                       <select
                         value={ing.unit || 'g'}
                         onChange={(e) => handleIngredientChange(i, 'unit', e.target.value)}
-                        className="w-24 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none shrink-0"
+                        className="w-20 p-2 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none shrink-0"
                       >
                         {UNITS.map((u) => (
                           <option key={u.value} value={u.value}>
@@ -1072,7 +1072,7 @@ export default function App() {
                         <button
                           type="button"
                           onClick={() => removeIngredientField(i)}
-                          className="text-[#EF6A45] font-bold px-2 text-sm"
+                          className="text-[#EF6A45] font-bold p-1 text-sm shrink-0"
                         >
                           ✕
                         </button>
@@ -1293,7 +1293,7 @@ export default function App() {
         {/* SECTION PANIER / COURSES INTERACTIVE */}
         {activeTab === 'shopping' && (
           <div className="space-y-4">
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+            <div className="bg-white p-3 sm:p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-extrabold text-slate-800">🛒 Ma liste</h2>
                 <button
@@ -1306,25 +1306,25 @@ export default function App() {
               </div>
 
               {/* Formulaire pour ajouter un ingrédient manuellement */}
-              <form onSubmit={addCustomShoppingItem} className="flex gap-2 items-center pt-2">
+              <form onSubmit={addCustomShoppingItem} className="flex gap-1.5 items-center pt-2">
                 <input
                   type="text"
                   placeholder="Ajouter un article (ex: Pain, Lait...)"
                   value={newIngredientName}
                   onChange={(e) => setNewIngredientName(e.target.value)}
-                  className="flex-1 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#3D6647]"
+                  className="flex-1 min-w-0 p-2 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#3D6647]"
                 />
                 <input
                   type="number"
                   placeholder="Qté"
                   value={newIngredientQty}
                   onChange={(e) => setNewIngredientQty(e.target.value)}
-                  className="w-16 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none"
+                  className="w-12 p-2 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none shrink-0"
                 />
                 <select
                   value={newIngredientUnit}
                   onChange={(e) => setNewIngredientUnit(e.target.value)}
-                  className="w-20 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none shrink-0"
+                  className="w-18 p-2 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none shrink-0"
                 >
                   {UNITS.map((u) => (
                     <option key={u.value} value={u.value}>
@@ -1334,7 +1334,7 @@ export default function App() {
                 </select>
                 <button
                   type="submit"
-                  className="bg-[#3D6647] text-white px-3 py-2.5 rounded-xl font-extrabold text-xs hover:bg-[#2C4A34] transition shrink-0"
+                  className="bg-[#3D6647] text-white p-2 rounded-xl font-extrabold text-xs hover:bg-[#2C4A34] transition shrink-0"
                 >
                   +
                 </button>
@@ -1348,35 +1348,35 @@ export default function App() {
               ) : (
                 <ul className="divide-y divide-slate-100">
                   {shoppingList.map((item) => (
-                    <li key={item.id} className="py-3 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-3 flex-1">
+                    <li key={item.id} className="py-2.5 flex items-center justify-between gap-1.5">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
                         <input
                           type="checkbox"
                           checked={item.checked}
                           onChange={() => toggleShoppingItem(item.id)}
-                          className="w-4 h-4 text-[#3D6647] rounded-md focus:ring-[#3D6647] border-slate-300 cursor-pointer"
+                          className="w-4 h-4 text-[#3D6647] rounded-md focus:ring-[#3D6647] border-slate-300 cursor-pointer shrink-0"
                         />
                         <input
                           type="text"
                           value={item.name}
                           onChange={(e) => updateShoppingItem(item.id, 'name', e.target.value)}
-                          className={`text-xs font-bold bg-transparent border-b border-transparent hover:border-slate-300 focus:border-[#3D6647] focus:outline-none flex-1 capitalize ${
+                          className={`text-xs font-bold bg-transparent border-b border-transparent hover:border-slate-300 focus:border-[#3D6647] focus:outline-none flex-1 min-w-0 capitalize ${
                             item.checked ? 'line-through text-slate-400' : 'text-slate-700'
                           }`}
                         />
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
                         <input
                           type="number"
                           value={item.quantity || ''}
                           onChange={(e) => updateShoppingItem(item.id, 'quantity', Number(e.target.value))}
-                          className="w-14 p-1 text-center bg-[#FAF7F2] border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
+                          className="w-12 p-1 text-center bg-[#FAF7F2] border border-slate-200 rounded-lg text-xs font-bold focus:outline-none"
                         />
                         <select
                           value={item.unit}
                           onChange={(e) => updateShoppingItem(item.id, 'unit', e.target.value)}
-                          className="p-1 bg-[#FAF7F2] border border-slate-200 rounded-lg text-[10px] font-extrabold uppercase focus:outline-none"
+                          className="p-1 bg-[#FAF7F2] border border-slate-200 rounded-lg text-[10px] font-semibold focus:outline-none max-w-[70px]"
                         >
                           {UNITS.map((u) => (
                             <option key={u.value} value={u.value}>
