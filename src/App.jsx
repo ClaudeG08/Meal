@@ -1043,39 +1043,53 @@ export default function App() {
       <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
         <nav className="pointer-events-auto flex gap-6 bg-white/90 backdrop-blur-md px-6 py-2 rounded-full shadow-xl border border-slate-100 items-center">
           
-          {/* BOUTON FAVORIS */}
+          {/* BOUTON FAVORIS (Aligné verticalement comme les autres) */}
           <button
-            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold transition shrink-0 ${
-              showFavoritesOnly
-                ? 'bg-red-500 text-white shadow-sm'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            onClick={() => {
+              if (activeTab !== 'recipes') {
+                setActiveTab('recipes');
+                setActiveRecipe(null);
+                setShowFavoritesOnly(true);
+              } else {
+                setShowFavoritesOnly(!showFavoritesOnly);
+              }
+            }}
+            className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
+              showFavoritesOnly && activeTab === 'recipes' ? 'text-red-500' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <svg
-              className="w-4 h-4"
-              fill={showFavoritesOnly ? 'currentColor' : 'none'}
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-              />
-            </svg>
+            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${
+              showFavoritesOnly && activeTab === 'recipes' ? 'bg-red-50 text-red-500' : ''
+            }`}>
+              <svg
+                className="w-5 h-5"
+                fill={showFavoritesOnly && activeTab === 'recipes' ? 'currentColor' : 'none'}
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                />
+              </svg>
+            </div>
             <span>Favoris</span>
           </button>
 
           {/* BOUTON RECETTES */}
           <button
-            onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
+            onClick={() => { 
+              setActiveTab('recipes'); 
+              setActiveRecipe(null); 
+              setShowFavoritesOnly(false); 
+            }}
             className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
-              activeTab === 'recipes' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
+              activeTab === 'recipes' && !showFavoritesOnly ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'recipes' ? 'bg-[#E8F3EB]' : ''}`}>
+            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'recipes' && !showFavoritesOnly ? 'bg-[#E8F3EB]' : ''}`}>
               📖
             </div>
             <span>Recettes</span>
