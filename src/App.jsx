@@ -259,7 +259,7 @@ export default function App() {
     } catch (err) {
       console.error("Erreur lors de l'upload de l'image :", err);
       setImageSearchError(`Échec de l'envoi de la photo : ${err.message}`);
-    } fontally {
+    } finally{
       setIsUploadingImage(false);
       e.target.value = '';
     }
