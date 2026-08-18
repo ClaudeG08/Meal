@@ -34,6 +34,21 @@ const SUB_CATEGORIES = {
     { name: 'Tous', image: '/icons/tous.png' },
   ],
 };
+const UNITS = [
+  { value: 'g', label: 'g' },
+  { value: 'kg', label: 'kg' },
+  { value: 'ml', label: 'ml' },
+  { value: 'cl', label: 'cl' },
+  { value: 'l', label: 'L' },
+  { value: 'c. à soupe', label: 'c. à soupe' },
+  { value: 'c. à café', label: 'c. à café' },
+  { value: 'pièce(s)', label: 'pièce(s)' },
+  { value: 'pincée(s)', label: 'pincée(s)' },
+  { value: 'gousse(s)', label: 'gousse(s)' },
+  { value: 'sachet(s)', label: 'sachet(s)' },
+  { value: 'tranche(s)', label: 'tranche(s)' },
+  { value: 'boîte(s)', label: 'boîte(s)' },
+];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('recipes');
@@ -135,7 +150,7 @@ export default function App() {
     const firstSub = SUB_CATEGORIES['Plats']?.[0]?.name || 'Tous';
     setFormSubCategory(firstSub);
     setFormServings(4);
-    setFormIngredients([{ name: '', quantity: '' }]);
+    setFormIngredients([{ name: '', quantity: '', unit: 'g' }]);
     setFormInstructions('');
     setIsFormOpen(true);
   };
@@ -149,7 +164,7 @@ export default function App() {
     setFormIngredients(
       recipe.ingredients?.length > 0
         ? JSON.parse(JSON.stringify(recipe.ingredients))
-        : [{ name: '', quantity: '' }]
+        : [{ name: '', quantity: '', unit: 'g'}]
     );
     setFormInstructions(recipe.instructions || '');
     setIsFormOpen(true);
@@ -162,7 +177,7 @@ export default function App() {
   };
 
   const addIngredientField = () => {
-    setFormIngredients([...formIngredients, { name: '', quantity: '' }]);
+    setFormIngredients([...formIngredients, { name: '', quantity: '', unit: 'g' }]);
   };
 
   const removeIngredientField = (index) => {
@@ -278,12 +293,13 @@ export default function App() {
       const baseServings = meal.baseServings || 4;
       const ratio = meal.guests / baseServings;
       meal.ingredients.forEach((ing) => {
+const unit = ing.unit || 'g';
         const key = ing.name.toLowerCase().trim();
         const qty = (Number(ing.quantity) || 0) * ratio;
         if (totals[key]) {
           totals[key].quantity += qty;
         } else {
-          totals[key] = { name: ing.name, quantity: qty };
+          totals[key] = {name: ing.name, quantity: qty, unit: unit };
         }
       });
     });
@@ -572,19 +588,22 @@ export default function App() {
 
             {recipeDetailTab === 'ingredients' ? (
               <ul className="space-y-2">
-                {activeRecipe.ingredients?.map((ing, i) => {
-                  const baseServings = activeRecipe.servings || 4;
-                  const calculatedQty = (Number(ing.quantity) || 0) * (selectedGuests / baseServings);
-                  return (
-                    <li key={i} className="flex justify-between text-xs border-b border-slate-50 py-2 font-medium">
-                      <span className="text-slate-700">{ing.name}</span>
-                      <span className="font-extrabold text-[#3D6647] bg-[#E8F3EB] px-2.5 py-0.5 rounded-full">
-                        {calculatedQty ? Math.round(calculatedQty * 10) / 10 : ing.quantity}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+  {activeRecipe.ingredients?.map((ing, i) => {
+    const baseServings = activeRecipe.servings || 4;
+    const calculatedQty = (Number(ing.quantity) || 0) * (selectedGuests / baseServings);
+    const formattedQty = calculatedQty ? Math.round(calculatedQty * 10) / 10 : ing.quantity;
+
+    return (
+      <li key={i} className="flex justify-between items-center text-xs border-b border-slate-50 py-2 font-medium">
+        <span className="text-slate-700">{ing.name}</span>
+        <span className="font-extrabold text-[#3D6647] bg-[#E8F3EB] px-2.5 py-1 rounded-full flex items-center gap-1">
+          <span>{formattedQty}</span>
+          {ing.unit && <span className="text-[10px] uppercase">{ing.unit}</span>}
+        </span>
+      </li>
+    );
+  })}
+</ul>
             ) : (
               <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed font-medium">
                 {activeRecipe.instructions || 'Aucune étape renseignée pour cette recette.'}
@@ -686,6 +705,17 @@ export default function App() {
                         onChange={(e) => handleIngredientChange(i, 'quantity', e.target.value)}
                         className="w-20 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold"
                       />
+<select
+        value={ing.unit || 'g'}
+        onChange={(e) => handleIngredientChange(i, 'unit', e.target.value)}
+        className="w-24 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none shrink-0"
+      >
+        {UNITS.map((u) => (
+          <option key={u.value} value={u.value}>
+            {u.label}
+          </option>
+        ))}
+      </select>
                       {formIngredients.length > 1 && (
                         <button
                           type="button"
@@ -905,7 +935,7 @@ export default function App() {
                       <span className="text-slate-700 capitalize text-xs font-bold">{item.name}</span>
                     </label>
                     <span className="bg-[#E8F3EB] text-[#3D6647] font-extrabold text-xs px-3 py-1 rounded-full">
-                      x {Math.round(item.quantity * 10) / 10}
+                      x {Math.round(item.quantity * 10) / 10}{item.unit}
                     </span>
                   </li>
                 ))}
