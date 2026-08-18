@@ -492,13 +492,6 @@ export default function App() {
     <div className="min-h-screen bg-[#FAF7F2] text-slate-800 flex flex-col font-sans relative pb-28">
 
       {/* EN-TÊTE */}
-      <header className="bg-white/80 backdrop-blur-md rounded-b-[32px] px-6 py-4 shadow-sm flex justify-between items-center max-w-2xl mx-auto w-full sticky top-0 z-30">
-        <button className="p-2 text-[#2C4A34] hover:bg-slate-100 rounded-full transition">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-
         <div
           className="flex items-center gap-2 cursor-pointer"
           onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
