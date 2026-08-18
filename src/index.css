@@ -4,6 +4,6 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  font-family: 'Plus Jakarta Sans', sans-serif !important;
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
