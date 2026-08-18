@@ -352,35 +352,35 @@ export default function App() {
               })}
             </div>
 
-            {/* FILTRE SOUS-CATÉGORIES AVEC IMAGES */}
-            {SUB_CATEGORIES[selectedMainCat] && (
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                {SUB_CATEGORIES[selectedMainCat].map((sub) => {
-                  const isSelected = selectedSubCat === sub.name;
-                  return (
-                    <button
-                      key={sub.name}
-                      onClick={() => setSelectedSubCat(sub.name)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                        isSelected
-                          ? 'bg-slate-800 text-white shadow-sm'
-                          : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                      }`}
-                    >
-                      {sub.image && (
-                        <img
-                          src={sub.image}
-                          alt={sub.name}
-                          className="w-4 h-4 object-contain"
-                          onError={(e) => { e.target.style.display = 'none'; }}
-                        />
-                      )}
-                      <span>{sub.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+        {/* FILTRE SOUS-CATÉGORIES AVEC IMAGES */}
+{SUB_CATEGORIES[selectedMainCat] && (
+  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+    {SUB_CATEGORIES[selectedMainCat].map((sub) => {
+      const isSelected = selectedSubCat === sub.name;
+      return (
+        <button
+          key={sub.name}
+          onClick={() => setSelectedSubCat(sub.name)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold w-auto shrink-0 whitespace-nowrap transition-all ${
+            isSelected
+              ? 'bg-slate-800 text-white shadow-sm'
+              : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+          }`}
+        >
+          {sub.image && (
+            <img
+              src={sub.image}
+              alt={sub.name}
+              className="w-4 h-4 object-contain shrink-0"
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+          )}
+          <span>{sub.name}</span>
+        </button>
+      );
+    })}
+  </div>
+)}
 
             <input
               type="text"
