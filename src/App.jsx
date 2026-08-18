@@ -659,7 +659,7 @@ export default function App() {
                         <img
                           src={sub.image}
                           alt={sub.name}
-                          className="w-4 h-4 object-contain shrink-0"
+                          className="w-5 h-5 object-contain shrink-0"
                           onError={(e) => { e.target.style.display = 'none'; }}
                         />
                       )}
