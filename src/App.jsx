@@ -34,6 +34,7 @@ const SUB_CATEGORIES = {
     { name: 'Tous', image: '/icons/tous.png' },
   ],
 };
+
 const UNITS = [
   { value: 'g', label: 'g' },
   { value: 'kg', label: 'kg' },
@@ -52,7 +53,7 @@ const UNITS = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('recipes');
-const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   // --- ÉTATS RECETTES ---
   const [recipes, setRecipes] = useState([]);
@@ -61,7 +62,8 @@ const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeRecipe, setActiveRecipe] = useState(null);
   const [recipeDetailTab, setRecipeDetailTab] = useState('ingredients');
-const toggleFavorite = async (recipeId, currentStatus, e) => {
+
+  const toggleFavorite = async (recipeId, currentStatus, e) => {
     e.stopPropagation();
     const newStatus = !currentStatus;
 
@@ -182,7 +184,7 @@ const toggleFavorite = async (recipeId, currentStatus, e) => {
     setFormIngredients(
       recipe.ingredients?.length > 0
         ? JSON.parse(JSON.stringify(recipe.ingredients))
-        : [{ name: '', quantity: '', unit: 'g'}]
+        : [{ name: '', quantity: '', unit: 'g' }]
     );
     setFormInstructions(recipe.instructions || '');
     setIsFormOpen(true);
@@ -255,7 +257,7 @@ const toggleFavorite = async (recipeId, currentStatus, e) => {
     const matchMain = (r.category || 'Plats') === selectedMainCat;
     const matchSub = selectedSubCat === 'Tous' || r.subCategory === selectedSubCat;
     const matchSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase());
-const matchesFavorite = showFavoritesOnly ? recipe.is_favorite : true;
+    const matchesFavorite = showFavoritesOnly ? r.is_favorite : true;
     return matchMain && matchSub && matchSearch && matchesFavorite;
   });
 
@@ -277,7 +279,7 @@ const matchesFavorite = showFavoritesOnly ? recipe.is_favorite : true;
 
   const removePlannedMeal = (id) => {
     setPlannedMeals(plannedMeals.filter((m) => m.id !== id));
-    
+
     const updatedAgenda = { ...agenda };
     Object.keys(updatedAgenda).forEach((key) => {
       if (updatedAgenda[key] === id) {
@@ -312,19 +314,20 @@ const matchesFavorite = showFavoritesOnly ? recipe.is_favorite : true;
       const baseServings = meal.baseServings || 4;
       const ratio = meal.guests / baseServings;
       meal.ingredients.forEach((ing) => {
-const unit = ing.unit || 'g';
+        const unit = ing.unit || 'g';
         const key = ing.name.toLowerCase().trim();
         const qty = (Number(ing.quantity) || 0) * ratio;
         if (totals[key]) {
           totals[key].quantity += qty;
         } else {
-          totals[key] = {name: ing.name, quantity: qty, unit: unit };
+          totals[key] = { name: ing.name, quantity: qty, unit: unit };
         }
       });
     });
     return Object.values(totals);
   };
-const handleRandomAgendaFill = () => {
+
+  const handleRandomAgendaFill = () => {
     if (recipes.length === 0) {
       alert("Vous devez avoir au moins une recette enregistrée pour remplir l'agenda.");
       return;
@@ -368,39 +371,39 @@ const handleRandomAgendaFill = () => {
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-slate-800 flex flex-col font-sans relative pb-28">
 
-     {/* 1. EN-TÊTE BLANC ET ARRONDI (STYLE MAQUETTE) */}
-<header className="bg-white/80 backdrop-blur-md rounded-b-[32px] px-6 py-4 shadow-sm flex justify-between items-center max-w-2xl mx-auto w-full sticky top-0 z-30">
-  {/* Menu Hamburger */}
-  <button className="p-2 text-[#2C4A34] hover:bg-slate-100 rounded-full transition">
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-  </button>
+      {/* 1. EN-TÊTE BLANC ET ARRONDI (STYLE MAQUETTE) */}
+      <header className="bg-white/80 backdrop-blur-md rounded-b-[32px] px-6 py-4 shadow-sm flex justify-between items-center max-w-2xl mx-auto w-full sticky top-0 z-30">
+        {/* Menu Hamburger */}
+        <button className="p-2 text-[#2C4A34] hover:bg-slate-100 rounded-full transition">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
 
-  {/* Logo Centré + Nom GILMEAL */}
-  <div 
-    className="flex items-center gap-2 cursor-pointer"
-    onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
-  >
-    <img 
-      src="/logo.png" 
-      alt="GILMEAL Logo" 
-      className="h-9 w-auto object-contain"
-      onError={(e) => { e.target.style.display = 'none'; }}
-    />
-    <span className="font-extrabold text-xl text-[#2C4A34] tracking-wider uppercase">
-      GILMEAL
-    </span>
-  </div>
+        {/* Logo Centré + Nom GILMEAL */}
+        <div
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
+        >
+          <img
+            src="/logo.png"
+            alt="GILMEAL Logo"
+            className="h-9 w-auto object-contain"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+          <span className="font-extrabold text-xl text-[#2C4A34] tracking-wider uppercase">
+            GILMEAL
+          </span>
+        </div>
 
-  {/* Bouton Profil avec pastille orange */}
-  <button className="p-2 border border-slate-200 rounded-full text-slate-700 hover:bg-slate-50 transition relative">
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-    </svg>
-    <span className="absolute top-0 right-0 w-3 h-3 bg-[#EF6A45] rounded-full border-2 border-white"></span>
-  </button>
-</header>
+        {/* Bouton Profil avec pastille orange */}
+        <button className="p-2 border border-slate-200 rounded-full text-slate-700 hover:bg-slate-50 transition relative">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          <span className="absolute top-0 right-0 w-3 h-3 bg-[#EF6A45] rounded-full border-2 border-white"></span>
+        </button>
+      </header>
 
       {/* CONTENU PRINCIPAL */}
       <main className="flex-1 p-4 max-w-2xl mx-auto w-full space-y-5">
@@ -409,64 +412,63 @@ const handleRandomAgendaFill = () => {
         {activeTab === 'recipes' && !activeRecipe && (
           <div className="space-y-5">
             {/* SALUTATION */}
-           <div className="max-w-2xl mx-auto w-full px-4 pt-4">
-  <div className="relative rounded-[32px] overflow-hidden bg-[#FAF7F2] min-h-[160px] flex items-center p-6 shadow-sm border border-slate-100/50">
-    
-    {/* Image de fond positionnée sur la droite */}
-    <div 
-      className="absolute inset-0 bg-cover bg-right bg-no-repeat pointer-events-none"
-      style={{ backgroundImage: "url('/banner.png')" }} 
-    />
+            <div className="max-w-2xl mx-auto w-full px-4 pt-4">
+              <div className="relative rounded-[32px] overflow-hidden bg-[#FAF7F2] min-h-[160px] flex items-center p-6 shadow-sm border border-slate-100/50">
 
-    {/* Dégradé léger à gauche pour garantir la lisibilité du texte */}
-    <div className="absolute inset-0 bg-gradient-to-r from-[#FAF7F2] via-[#FAF7F2]/90 to-transparent w-3/4"></div>
+                {/* Image de fond positionnée sur la droite */}
+                <div
+                  className="absolute inset-0 bg-cover bg-right bg-no-repeat pointer-events-none"
+                  style={{ backgroundImage: "url('/banner.png')" }}
+                />
 
-    {/* Contenu Texte */}
-    <div className="relative z-10 max-w-[260px] space-y-1">
-      <div className="flex items-center gap-2">
-        <span className="font-handwriting text-3xl text-[#3D6647] font-bold">
-          Bonjour !
-        </span>
-        <span className="text-[#EF6A45] font-extrabold text-lg"></span>
-      </div>
-      <h1 className="text-xl font-extrabold text-slate-800 leading-snug">
-        Qu'est-ce qu'on cuisine aujourd'hui ? <span className="text-[#EF6A45] inline-block ml-0.5"></span>
-      </h1>
-    </div>
+                {/* Dégradé léger à gauche pour garantir la lisibilité du texte */}
+                <div className="absolute inset-0 bg-gradient-to-r from-[#FAF7F2] via-[#FAF7F2]/90 to-transparent w-3/4"></div>
 
-  </div>
-</div>
+                {/* Contenu Texte */}
+                <div className="relative z-10 max-w-[260px] space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-handwriting text-3xl text-[#3D6647] font-bold">
+                      Bonjour !
+                    </span>
+                  </div>
+                  <h1 className="text-xl font-extrabold text-slate-800 leading-snug">
+                    Qu'est-ce qu'on cuisine aujourd'hui ?
+                  </h1>
+                </div>
 
-          {/* FILTRE CATÉGORIES PRINCIPALES */}
-<div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
-  {MAIN_CATEGORIES.map((cat) => {
-    const isSelected = selectedMainCat === cat.name;
-    return (
-      <button
-        key={cat.name}
-        onClick={() => {
-          setSelectedMainCat(cat.name);
-          setSelectedSubCat('Tous');
-        }}
-        className={`${cat.bg} min-w-[88px] w-22 aspect-square p-2.5 rounded-2xl flex flex-col items-center justify-between text-center transition-all transform active:scale-95 shadow-sm border-2 shrink-0 ${
-          isSelected ? 'border-[#3D6647]' : 'border-transparent'
-        }`}
-      >
-        <div className="w-full flex-1 flex items-center justify-center">
-          <img
-            src={cat.image}
-            alt={cat.name}
-            className="w-10 h-10 object-contain"
-            onError={(e) => { e.target.style.display = 'none'; }}
-          />
-        </div>
-        <span className="text-[10px] font-bold text-slate-700 leading-tight break-words hyphens-auto w-full line-clamp-2">
-          {cat.name}
-        </span>
-      </button>
-    );
-  })}
-</div>
+              </div>
+            </div>
+
+            {/* FILTRE CATÉGORIES PRINCIPALES */}
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+              {MAIN_CATEGORIES.map((cat) => {
+                const isSelected = selectedMainCat === cat.name;
+                return (
+                  <button
+                    key={cat.name}
+                    onClick={() => {
+                      setSelectedMainCat(cat.name);
+                      setSelectedSubCat('Tous');
+                    }}
+                    className={`${cat.bg} min-w-[88px] w-22 aspect-square p-2.5 rounded-2xl flex flex-col items-center justify-between text-center transition-all transform active:scale-95 shadow-sm border-2 shrink-0 ${
+                      isSelected ? 'border-[#3D6647]' : 'border-transparent'
+                    }`}
+                  >
+                    <div className="w-full flex-1 flex items-center justify-center">
+                      <img
+                        src={cat.image}
+                        alt={cat.name}
+                        className="w-10 h-10 object-contain"
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-700 leading-tight break-words hyphens-auto w-full line-clamp-2">
+                      {cat.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
 
             {/* FILTRE SOUS-CATÉGORIES */}
             {SUB_CATEGORIES[selectedMainCat] && (
@@ -518,7 +520,7 @@ const handleRandomAgendaFill = () => {
               </button>
             </div>
 
-            {/* LISTE DES RECETTES (CARTES CHALEUREUSES) */}
+            {/* LISTE DES RECETTES */}
             <div className="grid gap-3 pt-1">
               {filteredRecipes.length === 0 ? (
                 <div className="bg-white p-8 rounded-3xl text-center border border-slate-100 shadow-sm space-y-2">
@@ -530,28 +532,10 @@ const handleRandomAgendaFill = () => {
                   <div
                     key={r.id}
                     onClick={() => setActiveRecipe(r)}
-                    className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center cursor-pointer hover:border-[#3D6647] hover:shadow-md transition"
+                    className="relative bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center cursor-pointer hover:border-[#3D6647] hover:shadow-md transition"
                   >
-<button
-      onClick={(e) => toggleFavorite(recipe.id, recipe.is_favorite, e)}
-      className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm text-red-500 hover:scale-110 active:scale-95 transition"
-    >
-      <svg
-        className="w-5 h-5"
-        fill={recipe.is_favorite ? 'currentColor' : 'none'}
-        stroke="currentColor"
-        strokeWidth="2"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-        />
-      </svg>
-    </button>
                     <div className="space-y-1">
-                      <span className="font-extrabold text-slate-800 text-base block">{r.title}</span>
+                      <span className="font-extrabold text-slate-800 text-base block pr-8">{r.title}</span>
                       <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
                         <span className="bg-[#FAF3DC] text-slate-700 font-bold px-2 py-0.5 rounded-full text-[10px]">
                           {r.subCategory || r.category}
@@ -560,9 +544,30 @@ const handleRandomAgendaFill = () => {
                         <span>👥 Portion : {r.servings || 4} pers.</span>
                       </div>
                     </div>
-                    <span className="w-8 h-8 rounded-full bg-[#E8F3EB] text-[#3D6647] flex items-center justify-center font-bold text-sm shrink-0">
-                      ➔
-                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => toggleFavorite(r.id, r.is_favorite, e)}
+                        className="w-8 h-8 rounded-full bg-white/80 border border-slate-100 flex items-center justify-center shadow-sm text-red-500 hover:scale-110 active:scale-95 transition"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill={r.is_favorite ? 'currentColor' : 'none'}
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                          />
+                        </svg>
+                      </button>
+                      <span className="w-8 h-8 rounded-full bg-[#E8F3EB] text-[#3D6647] flex items-center justify-center font-bold text-sm shrink-0">
+                        ➔
+                      </span>
+                    </div>
                   </div>
                 ))
               )}
@@ -665,22 +670,22 @@ const handleRandomAgendaFill = () => {
 
             {recipeDetailTab === 'ingredients' ? (
               <ul className="space-y-2">
-  {activeRecipe.ingredients?.map((ing, i) => {
-    const baseServings = activeRecipe.servings || 4;
-    const calculatedQty = (Number(ing.quantity) || 0) * (selectedGuests / baseServings);
-    const formattedQty = calculatedQty ? Math.round(calculatedQty * 10) / 10 : ing.quantity;
+                {activeRecipe.ingredients?.map((ing, i) => {
+                  const baseServings = activeRecipe.servings || 4;
+                  const calculatedQty = (Number(ing.quantity) || 0) * (selectedGuests / baseServings);
+                  const formattedQty = calculatedQty ? Math.round(calculatedQty * 10) / 10 : ing.quantity;
 
-    return (
-      <li key={i} className="flex justify-between items-center text-xs border-b border-slate-50 py-2 font-medium">
-        <span className="text-slate-700">{ing.name}</span>
-        <span className="font-extrabold text-[#3D6647] bg-[#E8F3EB] px-2.5 py-1 rounded-full flex items-center gap-1">
-          <span>{formattedQty}</span>
-          {ing.unit && <span className="text-[10px] uppercase">{ing.unit}</span>}
-        </span>
-      </li>
-    );
-  })}
-</ul>
+                  return (
+                    <li key={i} className="flex justify-between items-center text-xs border-b border-slate-50 py-2 font-medium">
+                      <span className="text-slate-700">{ing.name}</span>
+                      <span className="font-extrabold text-[#3D6647] bg-[#E8F3EB] px-2.5 py-1 rounded-full flex items-center gap-1">
+                        <span>{formattedQty}</span>
+                        {ing.unit && <span className="text-[10px] uppercase">{ing.unit}</span>}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
             ) : (
               <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed font-medium">
                 {activeRecipe.instructions || 'Aucune étape renseignée pour cette recette.'}
@@ -697,8 +702,8 @@ const handleRandomAgendaFill = () => {
                 <h3 className="font-extrabold text-slate-800 text-lg">
                   {editingId ? '✏️ Modifier la recette' : '📖 Créer une recette'}
                 </h3>
-                <button 
-                  onClick={() => setIsFormOpen(false)} 
+                <button
+                  onClick={() => setIsFormOpen(false)}
                   className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 font-bold flex items-center justify-center hover:bg-slate-200"
                 >
                   ✕
@@ -782,17 +787,17 @@ const handleRandomAgendaFill = () => {
                         onChange={(e) => handleIngredientChange(i, 'quantity', e.target.value)}
                         className="w-20 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold"
                       />
-<select
-        value={ing.unit || 'g'}
-        onChange={(e) => handleIngredientChange(i, 'unit', e.target.value)}
-        className="w-24 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none shrink-0"
-      >
-        {UNITS.map((u) => (
-          <option key={u.value} value={u.value}>
-            {u.label}
-          </option>
-        ))}
-      </select>
+                      <select
+                        value={ing.unit || 'g'}
+                        onChange={(e) => handleIngredientChange(i, 'unit', e.target.value)}
+                        className="w-24 p-2.5 bg-[#FAF7F2] border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none shrink-0"
+                      >
+                        {UNITS.map((u) => (
+                          <option key={u.value} value={u.value}>
+                            {u.label}
+                          </option>
+                        ))}
+                      </select>
                       {formIngredients.length > 1 && (
                         <button
                           type="button"
@@ -930,29 +935,28 @@ const handleRandomAgendaFill = () => {
 
             {planningSubTab === 'agenda' && (
               <div className="space-y-4">
-               {/* BOUTON REMPLISSAGE ALÉATOIRE + SÉLECTEUR DE DATE */}
-    <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div className="flex items-center gap-2 w-full sm:w-auto">
-        <label className="text-xs font-extrabold text-slate-700 uppercase whitespace-nowrap">
-          📅 Début :
-        </label>
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="bg-[#FAF7F2] border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none w-full"
-        />
-      </div>
+                {/* BOUTON REMPLISSAGE ALÉATOIRE + SÉLECTEUR DE DATE */}
+                <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <label className="text-xs font-extrabold text-slate-700 uppercase whitespace-nowrap">
+                      📅 Début :
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="bg-[#FAF7F2] border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none w-full"
+                    />
+                  </div>
 
-      {/* BOUTON D'ACTION MAGIQUE */}
-      <button
-        onClick={handleRandomAgendaFill}
-        className="w-full sm:w-auto bg-[#EF6A45] hover:bg-[#d95a37] active:scale-95 text-white text-xs font-extrabold px-4 py-2.5 rounded-2xl shadow-sm flex items-center justify-center gap-2 transition"
-      >
-        <span>🎲</span>
-        <span>Remplir automatiquement (21j)</span>
-      </button>
-    </div>
+                  <button
+                    onClick={handleRandomAgendaFill}
+                    className="w-full sm:w-auto bg-[#EF6A45] hover:bg-[#d95a37] active:scale-95 text-white text-xs font-extrabold px-4 py-2.5 rounded-2xl shadow-sm flex items-center justify-center gap-2 transition"
+                  >
+                    <span>🎲</span>
+                    <span>Remplir automatiquement (21j)</span>
+                  </button>
+                </div>
 
                 <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-1">
                   {days.map((day) => (
@@ -1035,75 +1039,76 @@ const handleRandomAgendaFill = () => {
 
       </main>
 
-  {/* BARRE DE NAVIGATION FLOTTANTE BOMBÉE */}
-<div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
-  <nav className="pointer-events-auto flex gap-8 bg-white/90 backdrop-blur-md px-8 py-2 rounded-full shadow-xl border border-slate-100 items-center">
- {/* BOUTON FAVORIS*/}
-<button
-    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold transition shrink-0 ${
-      showFavoritesOnly
-        ? 'bg-red-500 text-white shadow-sm'
-        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-    }`}
-  >
-    <svg
-      className="w-4 h-4"
-      fill={showFavoritesOnly ? 'currentColor' : 'none'}
-      stroke="currentColor"
-      strokeWidth="2"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-      />
-    </svg>
-    <span>Favoris</span>
-  </button>
-    
-    {/* BOUTON RECETTES */}
-    <button
-      onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
-      className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
-        activeTab === 'recipes' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
-      }`}
-    >
-      <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'recipes' ? 'bg-[#E8F3EB]' : ''}`}>
-        📖
-      </div>
-      <span>Recettes</span>
-    </button>
+      {/* BARRE DE NAVIGATION FLOTTANTE BOMBÉE */}
+      <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+        <nav className="pointer-events-auto flex gap-6 bg-white/90 backdrop-blur-md px-6 py-2 rounded-full shadow-xl border border-slate-100 items-center">
+          
+          {/* BOUTON FAVORIS */}
+          <button
+            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-extrabold transition shrink-0 ${
+              showFavoritesOnly
+                ? 'bg-red-500 text-white shadow-sm'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <svg
+              className="w-4 h-4"
+              fill={showFavoritesOnly ? 'currentColor' : 'none'}
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+              />
+            </svg>
+            <span>Favoris</span>
+          </button>
 
-    {/* BOUTON PLANNING */}
-    <button
-      onClick={() => setActiveTab('planning')}
-      className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
-        activeTab === 'planning' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
-      }`}
-    >
-      <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'planning' ? 'bg-[#E8F3EB]' : ''}`}>
-        📅
-      </div>
-      <span>Planning</span>
-    </button>
+          {/* BOUTON RECETTES */}
+          <button
+            onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
+            className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
+              activeTab === 'recipes' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'recipes' ? 'bg-[#E8F3EB]' : ''}`}>
+              📖
+            </div>
+            <span>Recettes</span>
+          </button>
 
-    {/* BOUTON COURSES */}
-    <button
-      onClick={() => setActiveTab('shopping')}
-      className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
-        activeTab === 'shopping' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
-      }`}
-    >
-      <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'shopping' ? 'bg-[#E8F3EB]' : ''}`}>
-        🛒
-      </div>
-      <span>Courses</span>
-    </button>
+          {/* BOUTON PLANNING */}
+          <button
+            onClick={() => setActiveTab('planning')}
+            className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
+              activeTab === 'planning' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'planning' ? 'bg-[#E8F3EB]' : ''}`}>
+              📅
+            </div>
+            <span>Planning</span>
+          </button>
 
-  </nav>
-</div>
+          {/* BOUTON COURSES */}
+          <button
+            onClick={() => setActiveTab('shopping')}
+            className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
+              activeTab === 'shopping' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'shopping' ? 'bg-[#E8F3EB]' : ''}`}>
+              🛒
+            </div>
+            <span>Courses</span>
+          </button>
+
+        </nav>
+      </div>
 
     </div>
   );
