@@ -226,7 +226,7 @@ export default function App() {
       servings: Number(formServings) || 4,
       ingredients: filteredIngs,
       instructions: formInstructions,
-      image_url: formImageUrl.trim() ? formImageUrl.trim() : getDefaultImage(formCategory),
+      image_url: formImageUrl.trim() ? formImageUrl.trim() : null,
     };
 
     if (editingId) {
