@@ -641,7 +641,7 @@ export default function App() {
                           {r.subCategory || r.category}
                         </span>
                         <span>•</span>
-                        <span>👥 Portion : {r.servings || 4} pers.</span>
+                        <span>👥 : {r.servings || 4} pers.</span>
                       </div>
                     </div>
 
@@ -1201,7 +1201,7 @@ export default function App() {
         {/* SECTION PANIER / COURSES */}
         {activeTab === 'shopping' && (
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
-            <h2 className="text-xl font-extrabold text-slate-800">🛒 Liste de courses finale</h2>
+            <h2 className="text-xl font-extrabold text-slate-800">🛒 Ma liste </h2>
             {getShoppingList().length === 0 ? (
               <p className="text-slate-400 text-xs font-semibold">
                 Aucun ingrédient dans le panier. Ajoutez des recettes au planning.
