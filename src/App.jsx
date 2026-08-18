@@ -51,6 +51,12 @@ const UNITS = [
   { value: 'boîte(s)', label: 'boîte(s)' },
 ];
 
+// Image par défaut dynamique selon la catégorie principale
+const getDefaultImage = (category) => {
+  const cat = MAIN_CATEGORIES.find((c) => c.name === category);
+  return cat ? cat.image : '/plats.png';
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('recipes');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
@@ -88,6 +94,7 @@ export default function App() {
   const [formCategory, setFormCategory] = useState('Plats');
   const [formSubCategory, setFormSubCategory] = useState('Tartes & Quiches');
   const [formServings, setFormServings] = useState(4);
+  const [formImageUrl, setFormImageUrl] = useState('');
   const [formIngredients, setFormIngredients] = useState([{ name: '', quantity: '' }]);
   const [formInstructions, setFormInstructions] = useState('');
 
@@ -170,6 +177,7 @@ export default function App() {
     const firstSub = SUB_CATEGORIES['Plats']?.[0]?.name || 'Tous';
     setFormSubCategory(firstSub);
     setFormServings(4);
+    setFormImageUrl('');
     setFormIngredients([{ name: '', quantity: '', unit: 'g' }]);
     setFormInstructions('');
     setIsFormOpen(true);
@@ -181,6 +189,7 @@ export default function App() {
     setFormCategory(recipe.category || 'Plats');
     setFormSubCategory(recipe.subCategory || 'Tous');
     setFormServings(recipe.servings || 4);
+    setFormImageUrl(recipe.image_url || '');
     setFormIngredients(
       recipe.ingredients?.length > 0
         ? JSON.parse(JSON.stringify(recipe.ingredients))
@@ -217,7 +226,7 @@ export default function App() {
       servings: Number(formServings) || 4,
       ingredients: filteredIngs,
       instructions: formInstructions,
-      image_url: `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80`,
+      image_url: formImageUrl.trim() ? formImageUrl.trim() : getDefaultImage(formCategory),
     };
 
     if (editingId) {
@@ -372,7 +381,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-slate-800 flex flex-col font-sans relative pb-28">
 
-      {/* 1. EN-TÊTE BLANC ET ARRONDI */}
+      {/* EN-TÊTE */}
       <header className="bg-white/80 backdrop-blur-md rounded-b-[32px] px-6 py-4 shadow-sm flex justify-between items-center max-w-2xl mx-auto w-full sticky top-0 z-30">
         <button className="p-2 text-[#2C4A34] hover:bg-slate-100 rounded-full transition">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -409,15 +418,13 @@ export default function App() {
         {/* SECTION RECETTES */}
         {activeTab === 'recipes' && !activeRecipe && (
           <div className="space-y-5">
-            {/* SALUTATION */}
+            {/* BANNIÈRE */}
             <div className="max-w-2xl mx-auto w-full px-4 pt-4">
               <div className="relative rounded-[32px] overflow-hidden bg-[#FAF7F2] min-h-[160px] flex items-center p-6 shadow-sm border border-slate-100/50">
-
                 <div
                   className="absolute inset-0 bg-cover bg-right bg-no-repeat pointer-events-none"
                   style={{ backgroundImage: "url('/banner.png')" }}
                 />
-
                 <div className="absolute inset-0 bg-gradient-to-r from-[#FAF7F2] via-[#FAF7F2]/90 to-transparent w-3/4"></div>
 
                 <div className="relative z-10 max-w-[260px] space-y-1">
@@ -430,7 +437,6 @@ export default function App() {
                     Qu'est-ce qu'on cuisine aujourd'hui ?
                   </h1>
                 </div>
-
               </div>
             </div>
 
@@ -529,13 +535,12 @@ export default function App() {
                     onClick={() => setActiveRecipe(r)}
                     className="relative bg-white p-3 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center cursor-pointer hover:border-[#3D6647] hover:shadow-md transition gap-3"
                   >
-                    {/* Miniature photo */}
                     <img
-                      src={r.image_url || '/plats.png'}
+                      src={r.image_url || getDefaultImage(r.category)}
                       alt={r.title}
                       className="w-14 h-14 rounded-2xl object-cover shrink-0 bg-slate-100"
                       onError={(e) => {
-                        e.target.src = '/plats.png';
+                        e.target.src = getDefaultImage(r.category);
                       }}
                     />
 
@@ -606,14 +611,13 @@ export default function App() {
               </div>
             </div>
 
-            {/* --- IMAGE DE LA RECETTE DÉTAILLÉE --- */}
-            <div className="w-full h-52 rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-sm">
+            <div className="w-full h-52 rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-sm flex items-center justify-center">
               <img
-                src={activeRecipe.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80'}
+                src={activeRecipe.image_url || getDefaultImage(activeRecipe.category)}
                 alt={activeRecipe.title}
                 className="w-full h-full object-cover object-center"
                 onError={(e) => {
-                  e.target.src = 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80';
+                  e.target.src = getDefaultImage(activeRecipe.category);
                 }}
               />
             </div>
@@ -628,7 +632,7 @@ export default function App() {
               </p>
             </div>
 
-            {/* SELECTION DU NOMBRE DE PERSONNES ET AJOUT PANIER */}
+            {/* SELECTION NOMBRE DE PERSONNES */}
             <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-slate-100 flex flex-col sm:flex-row gap-3 justify-between items-center">
               <span className="text-xs font-bold text-slate-700">
                 Ajuster les portions :
@@ -661,7 +665,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* ONGLET INGRÉDIENTS / ÉTAPES */}
             <div className="flex border-b border-slate-100">
               <button
                 onClick={() => setRecipeDetailTab('ingredients')}
@@ -711,7 +714,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODALE FORMULAIRE */}
+        {/* MODALE FORMULAIRE AVEC CHAMP URL IMAGE */}
         {isFormOpen && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4 shadow-xl border border-slate-100">
@@ -736,6 +739,19 @@ export default function App() {
                     onChange={(e) => setFormTitle(e.target.value)}
                     className="w-full p-3 bg-[#FAF7F2] border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
                     required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-600 uppercase mb-1">
+                    Lien de la photo (URL optionnelle)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://domaine.com/photo.jpg (Laissez vide pour l'image par défaut)"
+                    value={formImageUrl}
+                    onChange={(e) => setFormImageUrl(e.target.value)}
+                    className="w-full p-3 bg-[#FAF7F2] border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
                   />
                 </div>
 
@@ -1055,7 +1071,7 @@ export default function App() {
 
       </main>
 
-      {/* BARRE DE NAVIGATION FLOTTANTE BOMBÉE */}
+      {/* BARRE DE NAVIGATION FLOTTANTE */}
       <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
         <nav className="pointer-events-auto flex gap-6 bg-white/90 backdrop-blur-md px-6 py-2 rounded-full shadow-xl border border-slate-100 items-center">
           
