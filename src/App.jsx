@@ -1092,12 +1092,16 @@ export default function App() {
                   <label className="block text-xs font-extrabold text-slate-600 uppercase mb-1">
                     Étapes de préparation
                   </label>
-                  <textarea
-                    rows="3"
-                    value={formInstructions}
-                    onChange={(e) => setFormInstructions(e.target.value)}
-                    className="w-full p-3 bg-[#FAF7F2] border border-slate-200 rounded-2xl text-xs font-medium"
-                  ></textarea>
+                 <textarea
+  rows="4"
+  value={formInstructions}
+  onChange={(e) => {
+    setFormInstructions(e.target.value);
+    e.target.style.height = 'auto';
+    e.target.style.height = e.target.scrollHeight + 'px';
+  }}
+  className="w-full p-3 bg-[#FAF7F2] border border-slate-200 rounded-2xl text-xs font-medium overflow-hidden min-h-[120px]"
+></textarea>
                 </div>
 
                 <div className="flex gap-2 pt-2">
