@@ -490,8 +490,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-slate-800 flex flex-col font-sans relative pb-28">
-)
+);
       {/* EN-TÊTE */}
+
         <div
           className="flex items-center gap-2 cursor-pointer"
           onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
