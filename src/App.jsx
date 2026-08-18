@@ -1295,13 +1295,13 @@ export default function App() {
           <div className="space-y-4">
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-extrabold text-slate-800">🛒 Ma liste de courses</h2>
+                <h2 className="text-xl font-extrabold text-slate-800">🛒 Ma liste</h2>
                 <button
                   onClick={generateShoppingListFromPlanning}
                   className="bg-[#E8F3EB] text-[#3D6647] hover:bg-[#3D6647] hover:text-white transition font-extrabold text-xs px-3 py-2 rounded-xl border border-[#3D6647]/20 flex items-center gap-1.5"
                   title="Générer d'après votre planning de repas"
                 >
-                  🔄 Importer du planning
+                  🔄 Importer liste repas
                 </button>
               </div>
 
