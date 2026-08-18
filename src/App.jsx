@@ -998,46 +998,51 @@ const handleRandomAgendaFill = () => {
 
       </main>
 
-      {/* BARRE DE NAVIGATION FLOTTANTE BOMBÉE */}
-      <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
-        <nav className="pointer-events-auto flex gap-6 bg-white/90 backdrop-blur-md px-6 py-2.5 rounded-full shadow-xl border border-slate-100 items-center">
-          <button
-            onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
-            className={`flex flex-col items-center gap-0.5 text-[10px] font-extrabold transition ${
-              activeTab === 'recipes' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            <div className={`p-2 rounded-full ${activeTab === 'recipes' ? 'bg-[#E8F3EB]' : ''}`}>
-              📖
-            </div>
-            Recettes
-          </button>
-
-          <button
-            onClick={() => setActiveTab('planning')}
-            className={`flex flex-col items-center gap-0.5 text-[10px] font-extrabold transition ${
-              activeTab === 'planning' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            <div className={`p-2 rounded-full ${activeTab === 'planning' ? 'bg-[#E8F3EB]' : ''}`}>
-              📅
-            </div>
-            Planning
-          </button>
-
-          <button
-            onClick={() => setActiveTab('shopping')}
-            className={`flex flex-col items-center gap-0.5 text-[10px] font-extrabold transition ${
-              activeTab === 'shopping' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            <div className={`p-2 rounded-full ${activeTab === 'shopping' ? 'bg-[#E8F3EB]' : ''}`}>
-              🛒
-            </div>
-            Courses
-          </button>
-        </nav>
+  {/* BARRE DE NAVIGATION FLOTTANTE BOMBÉE */}
+<div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+  <nav className="pointer-events-auto flex gap-8 bg-white/90 backdrop-blur-md px-8 py-2 rounded-full shadow-xl border border-slate-100 items-center">
+    
+    {/* BOUTON RECETTES */}
+    <button
+      onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
+      className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
+        activeTab === 'recipes' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
+      }`}
+    >
+      <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'recipes' ? 'bg-[#E8F3EB]' : ''}`}>
+        📖
       </div>
+      <span>Recettes</span>
+    </button>
+
+    {/* BOUTON PLANNING */}
+    <button
+      onClick={() => setActiveTab('planning')}
+      className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
+        activeTab === 'planning' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
+      }`}
+    >
+      <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'planning' ? 'bg-[#E8F3EB]' : ''}`}>
+        📅
+      </div>
+      <span>Planning</span>
+    </button>
+
+    {/* BOUTON COURSES */}
+    <button
+      onClick={() => setActiveTab('shopping')}
+      className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
+        activeTab === 'shopping' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
+      }`}
+    >
+      <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'shopping' ? 'bg-[#E8F3EB]' : ''}`}>
+        🛒
+      </div>
+      <span>Courses</span>
+    </button>
+
+  </nav>
+</div>
 
     </div>
   );
