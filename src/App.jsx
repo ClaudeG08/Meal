@@ -310,47 +310,110 @@ export default function App() {
 
       {/* CONTENU PRINCIPAL */}
       <main className="flex-1 p-4 max-w-2xl mx-auto w-full pb-24">
-        {/* SECTION RECETTES */}
-        {activeTab === 'recipes' && !activeRecipe && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-bold text-slate-800">Catalogue</h2>
-              <button
-                onClick={openCreateForm}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition"
-              >
-                + Nouvelle Recette
-              </button>
-            </div>
+      {/* SECTION RECETTES */}
+{activeTab === 'recipes' && !activeRecipe && (
+  <div className="space-y-4 pt-1">
+    {/* FILTRE CATÉGORIES PRINCIPALES (Positionné tout en haut) */}
+    <div className="flex gap-2 overflow-x-auto pb-2 pt-1 px-1 scrollbar-none">
+      {MAIN_CATEGORIES.map((cat) => {
+        const isSelected = selectedMainCat === cat.name;
+        return (
+          <button
+            key={cat.name}
+            onClick={() => {
+              setSelectedMainCat(cat.name);
+              setSelectedSubCat('Tous');
+            }}
+            className={`flex flex-col items-center justify-center min-w-[135px] p-2.5 rounded-2xl text-xs font-bold shrink-0 transition-all ${
+              isSelected
+                ? 'bg-emerald-600 text-white shadow-md scale-105'
+                : 'bg-white text-slate-700 border border-slate-200 hover:border-emerald-300'
+            }`}
+          >
+            <img
+              src={cat.image}
+              alt={cat.name}
+              className="w-10 h-10 object-contain mb-1.5 shrink-0"
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+            <span className="text-center line-clamp-1">{cat.name}</span>
+          </button>
+        );
+      })}
+    </div>
 
-            {/* FILTRE CATÉGORIES PRINCIPALES */}
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {MAIN_CATEGORIES.map((cat) => {
-                const isSelected = selectedMainCat === cat.name;
-                return (
-                  <button
-                    key={cat.name}
-                    onClick={() => {
-                      setSelectedMainCat(cat.name);
-                      setSelectedSubCat('Tous');
-                    }}
-                    className={`flex flex-col items-center justify-center min-w-[135px] p-2.5 rounded-2xl text-xs font-bold transition-all ${
-                      isSelected
-                        ? 'bg-emerald-600 text-white shadow-md scale-105'
-                        : 'bg-white text-slate-700 border border-slate-200 hover:border-emerald-300'
-                    }`}
-                  >
-                    <img
-                      src={cat.image}
-                      alt={cat.name}
-                      className="w-10 h-10 object-contain mb-1.5"
-                      onError={(e) => { e.target.style.display = 'none'; }}
-                    />
-                    <span className="text-center line-clamp-1">{cat.name}</span>
-                  </button>
-                );
-              })}
+    {/* FILTRE SOUS-CATÉGORIES AVEC IMAGES */}
+    {SUB_CATEGORIES[selectedMainCat] && (
+      <div className="flex gap-2 overflow-x-auto pb-2 pt-1 px-1 scrollbar-none">
+        {SUB_CATEGORIES[selectedMainCat].map((sub) => {
+          const isSelected = selectedSubCat === sub.name;
+          return (
+            <button
+              key={sub.name}
+              onClick={() => setSelectedSubCat(sub.name)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold w-auto shrink-0 whitespace-nowrap transition-all ${
+                isSelected
+                  ? 'bg-slate-800 text-white shadow-sm'
+                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+              }`}
+            >
+              {sub.image && (
+                <img
+                  src={sub.image}
+                  alt={sub.name}
+                  className="w-4 h-4 object-contain shrink-0"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              )}
+              <span>{sub.name}</span>
+            </button>
+          );
+        })}
+      </div>
+    )}
+
+    {/* BARRE DE RECHERCHE + BOUTON NOUVELLE RECETTE */}
+    <div className="flex gap-2 items-center">
+      <input
+        type="text"
+        placeholder="🔍 Rechercher une recette..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="w-3/4 p-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+      />
+      <button
+        onClick={openCreateForm}
+        title="Nouvelle recette"
+        className="w-1/4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-[42px] rounded-xl shadow transition flex items-center justify-center text-base"
+      >
+        + 📖
+      </button>
+    </div>
+
+    {/* LISTE DES RECETTES */}
+    <div className="grid gap-3">
+      {filteredRecipes.length === 0 ? (
+        <p className="text-center text-slate-400 py-6 text-sm">Aucune recette disponible.</p>
+      ) : (
+        filteredRecipes.map((r) => (
+          <div
+            key={r.id}
+            onClick={() => setActiveRecipe(r)}
+            className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center cursor-pointer hover:border-emerald-500 transition"
+          >
+            <div>
+              <span className="font-bold text-slate-800 block">{r.title}</span>
+              <span className="text-[11px] text-slate-400">
+                Portion de base : {r.servings || 4} pers.
+              </span>
             </div>
+            <span className="text-slate-400 text-sm">➜</span>
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+)}
 
         {/* FILTRE SOUS-CATÉGORIES AVEC IMAGES */}
 {SUB_CATEGORIES[selectedMainCat] && (
