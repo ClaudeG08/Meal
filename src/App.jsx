@@ -10,6 +10,7 @@ const MAIN_CATEGORIES = [
   { name: 'Accompagnements', image: '/accompagnements.png', bg: 'bg-[#FAF3DC]' },
   { name: 'Entrées', image: '/entrees.png', bg: 'bg-[#E8F3EB]' },
   { name: 'Desserts', image: '/desserts.png', bg: 'bg-[#F4EAF4]' },
+{ name: 'Boissons', image: '/icons/drink.png', bg: 'bg-[#E6F4F8]' },
 ];
 
 const SUB_CATEGORIES = {
@@ -18,12 +19,14 @@ const SUB_CATEGORIES = {
     { name: 'Tartes & Quiches', image: '/icons/tartes.png' },
     { name: 'Pâtes & Lasagnes', image: '/icons/pates.png' },
     { name: 'Mijotés', image: '/icons/mijotes.png' },
+{ name: 'Autres', image: '/icons/autre.png' },
   ],
   'Viandes et poissons': [
     { name: 'Tous', image: '/icons/tous.png' },
     { name: 'Viande', image: '/icons/viande.png' },
     { name: 'Poisson', image: '/icons/poisson.png' },
     { name: 'Volaille', image: '/icons/volaille.png' },
+{ name: 'Oeufs', image: '/icons/egg.png' },
   ],
   'Accompagnements': [
     { name: 'Tous', image: '/icons/tous.png' },
@@ -32,9 +35,14 @@ const SUB_CATEGORIES = {
   ],
   'Entrées': [
     { name: 'Tous', image: '/icons/tous.png' },
+{ name: 'Entrées', image: '/icons/starter.png' },
+    { name: 'Apéritifs', image: '/icons/nachos.png' },
   ],
   'Desserts': [
     { name: 'Tous', image: '/icons/tous.png' },
+{ name: 'Alcools', image: '/icons/alcool.png' },
+    { name: 'Chauds', image: '/icons/hot.png' },
+    { name: 'Autre', image: '/icons/other_drink.png' },
   ],
 };
 
