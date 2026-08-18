@@ -351,7 +351,7 @@ export default function App() {
                     <button
                       key={sub.name}
                       onClick={() => setSelectedSubCat(sub.name)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold w-auto shrink-0 whitespace-nowrap transition-all ${
+                      className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold w-auto shrink-0 whitespace-nowrap transition-all ${
                         isSelected
                           ? 'bg-slate-800 text-white shadow-sm'
                           : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
