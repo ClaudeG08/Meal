@@ -305,6 +305,46 @@ const unit = ing.unit || 'g';
     });
     return Object.values(totals);
   };
+const handleRandomAgendaFill = () => {
+    if (recipes.length === 0) {
+      alert("Vous devez avoir au moins une recette enregistrée pour remplir l'agenda.");
+      return;
+    }
+
+    if (
+      plannedMeals.length > 0 &&
+      !window.confirm("Cela va remplacer les affectations actuelles de votre agenda. Voulez-vous continuer ?")
+    ) {
+      return;
+    }
+
+    const newAgenda = {};
+    const newPlannedMeals = [];
+
+    days.forEach((day) => {
+      ['M', 'S'].forEach((slot) => {
+        const randomRecipe = recipes[Math.floor(Math.random() * recipes.length)];
+        const mealId = Date.now() + Math.floor(Math.random() * 100000);
+
+        newPlannedMeals.push({
+          id: mealId,
+          recipeId: randomRecipe.id,
+          recipeTitle: randomRecipe.title,
+          baseServings: randomRecipe.servings || 4,
+          ingredients: randomRecipe.ingredients || [],
+          guests: randomRecipe.servings || 4,
+          assignedDay: day.id,
+          assignedSlot: slot,
+        });
+
+        const key = `${day.id}-${slot}`;
+        newAgenda[key] = mealId;
+      });
+    });
+
+    setPlannedMeals(newPlannedMeals);
+    setAgenda(newAgenda);
+  };
 
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-slate-800 flex flex-col font-sans relative pb-28">
@@ -853,17 +893,29 @@ const unit = ing.unit || 'g';
 
             {planningSubTab === 'agenda' && (
               <div className="space-y-4">
-                <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between">
-                  <label className="text-xs font-extrabold text-slate-700 uppercase">
-                    📅 Date de début :
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="bg-[#FAF7F2] border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none"
-                  />
-                </div>
+               {/* BOUTON REMPLISSAGE ALÉATOIRE + SÉLECTEUR DE DATE */}
+    <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="flex items-center gap-2 w-full sm:w-auto">
+        <label className="text-xs font-extrabold text-slate-700 uppercase whitespace-nowrap">
+          📅 Début :
+        </label>
+        <input
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          className="bg-[#FAF7F2] border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 focus:outline-none w-full"
+        />
+      </div>
+
+      {/* BOUTON D'ACTION MAGIQUE */}
+      <button
+        onClick={handleRandomAgendaFill}
+        className="w-full sm:w-auto bg-[#EF6A45] hover:bg-[#d95a37] active:scale-95 text-white text-xs font-extrabold px-4 py-2.5 rounded-2xl shadow-sm flex items-center justify-center gap-2 transition"
+      >
+        <span>🎲</span>
+        <span>Remplir automatiquement (21j)</span>
+      </button>
+    </div>
 
                 <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-1">
                   {days.map((day) => (
