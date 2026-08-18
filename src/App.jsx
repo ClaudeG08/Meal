@@ -340,7 +340,7 @@ export default function App() {
     {/* Image de fond positionnée sur la droite */}
     <div 
       className="absolute inset-0 bg-cover bg-right bg-no-repeat pointer-events-none"
-      style={{ backgroundImage: "url('/banner.jpg')" }} // Remplace par ton image (ex: assiette de tomates/basilic)
+      style={{ backgroundImage: "url('/banner.png')" }} // Remplace par ton image (ex: assiette de tomates/basilic)
     />
 
     {/* Dégradé léger à gauche pour garantir la lisibilité du texte */}
