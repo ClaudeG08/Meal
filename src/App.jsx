@@ -853,7 +853,7 @@ export default function App() {
                 : 'text-slate-300 hover:text-white hover:bg-white/10'
             }`}
           >
-            📖 Recettes
+            📖
           </button>
           <button
             onClick={() => setActiveTab('planning')}
@@ -863,7 +863,7 @@ export default function App() {
                 : 'text-slate-300 hover:text-white hover:bg-white/10'
             }`}
           >
-            📅 Planning
+            📅
           </button>
           <button
             onClick={() => setActiveTab('shopping')}
@@ -873,7 +873,7 @@ export default function App() {
                 : 'text-slate-300 hover:text-white hover:bg-white/10'
             }`}
           >
-            🛒 Panier
+            🛒
           </button>
         </nav>
       </div>
