@@ -843,10 +843,10 @@ export default function App() {
 
       {/* BARRE DE NAVIGATION FLOTTANTE */}
       <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
-        <nav className="pointer-events-auto flex gap-2 bg-slate-900/90 backdrop-blur-md p-2 rounded-2xl border border-white/20 shadow-2xl">
+        <nav className="pointer-events-auto flex gap-2 bg-slate-900/90 backdrop-blur-md p-3 rounded-2xl border border-white/20 shadow-2xl">
           <button
             onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+            className={`px-5 py-3 rounded-xl text-xs font-bold transition ${
               activeTab === 'recipes' 
                 ? 'bg-emerald-600 text-white shadow-lg' 
                 : 'text-slate-300 hover:text-white hover:bg-white/10'
@@ -856,7 +856,7 @@ export default function App() {
           </button>
           <button
             onClick={() => setActiveTab('planning')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+            className={`px-5 py-3 rounded-xl text-xs font-bold transition ${
               activeTab === 'planning' 
                 ? 'bg-emerald-600 text-white shadow-lg' 
                 : 'text-slate-300 hover:text-white hover:bg-white/10'
@@ -866,7 +866,7 @@ export default function App() {
           </button>
           <button
             onClick={() => setActiveTab('shopping')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+            className={`px-5 py-3 rounded-xl text-xs font-bold transition ${
               activeTab === 'shopping' 
                 ? 'bg-emerald-600 text-white shadow-lg' 
                 : 'text-slate-300 hover:text-white hover:bg-white/10'
