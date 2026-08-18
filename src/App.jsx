@@ -518,7 +518,7 @@ export default function App() {
 
           <span className="font-extrabold text-xl text-[#2C4A34] tracking-wider uppercase">
 
-            GILMEAL
+            Gil'Meal
 
           </span>
 
