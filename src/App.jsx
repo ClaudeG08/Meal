@@ -210,6 +210,9 @@ export default function App() {
 
     const filteredIngs = formIngredients.filter((ing) => ing.name.trim() !== '');
 
+const imageKeyword = encodeURIComponent(`${formTitle} food`);
+  const imageUrl = `https://source.unsplash.com/600x400/?${imageKeyword}`;
+
     const recipeData = {
       title: formTitle,
       category: formCategory,
@@ -217,6 +220,7 @@ export default function App() {
       servings: Number(formServings) || 4,
       ingredients: filteredIngs,
       instructions: formInstructions,
+image_url: imageUrl,
     };
 
     if (editingId) {
@@ -534,6 +538,15 @@ export default function App() {
                     onClick={() => setActiveRecipe(r)}
                     className="relative bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center cursor-pointer hover:border-[#3D6647] hover:shadow-md transition"
                   >
+<img
+      src={r.image_url || `https://source.unsplash.com/200x200/?${encodeURIComponent(r.title + ' food')}`}
+      alt={r.title}
+      className="w-16 h-16 rounded-2xl object-cover shrink-0 bg-slate-100"
+      onError={(e) => {
+        // Image de secours si la recherche échoue
+        e.target.src = '/plats.png';
+      }}
+    />
                     <div className="space-y-1">
                       <span className="font-extrabold text-slate-800 text-base block pr-8">{r.title}</span>
                       <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
@@ -575,8 +588,7 @@ export default function App() {
           </div>
         )}
 
-        {/* DÉTAIL RECETTE */}
-        {activeTab === 'recipes' && activeRecipe && (
+  {activeTab === 'recipes' && activeRecipe && (
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 space-y-5">
             <div className="flex justify-between items-center">
               <button
@@ -601,6 +613,23 @@ export default function App() {
               </div>
             </div>
 
+            {/* --- IMAGE DE LA RECETTE --- */}
+            <div className="w-full h-48 rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-inner">
+              <img
+                src={
+                  activeRecipe.image_url ||
+                  `https://image.pollinations.ai/prompt/${encodeURIComponent(
+                    activeRecipe.title + ' food photo realistic'
+                  )}?width=800&height=400&nologo=true`
+                }
+                alt={activeRecipe.title}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
+              />
+            </div>
+
             <div>
               <span className="bg-[#FDF2E9] text-[#EF6A45] text-[10px] font-extrabold px-3 py-1 rounded-full inline-block mb-2">
                 ★ {activeRecipe.category}
@@ -610,7 +639,6 @@ export default function App() {
                 Recette créée pour <strong className="text-slate-700">{activeRecipe.servings || 4} pers.</strong>
               </p>
             </div>
-
             {/* SELECTION DU NOMBRE DE PERSONNES ET AJOUT PANIER */}
             <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-slate-100 flex flex-col sm:flex-row gap-3 justify-between items-center">
               <span className="text-xs font-bold text-slate-700">
