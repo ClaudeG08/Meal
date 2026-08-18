@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* On redéfinit la police sans-serif par défaut de Tailwind */
+@theme {
+  --font-sans: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
 
-
-/* Police globale arrondie pour TOUTE l'application */
+/* Règle globale de secours */
 body {
   font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* Police manuscrite pour les titres spécifiques */
+/* Police manuscrite pour le "Bonjour !" */
 .font-handwriting {
-  font-family: 'Caveat', cursive, sans-serif;
+  font-family: 'Caveat', cursive;
 }
