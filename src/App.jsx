@@ -210,18 +210,15 @@ export default function App() {
 
     const filteredIngs = formIngredients.filter((ing) => ing.name.trim() !== '');
 
-const imageKeyword = encodeURIComponent(`${formTitle} food`);
-const imageUrl = `https://source.unsplash.com/featured/800x600/?${imageKeyword}`;
-
-const recipeData = {
-  title: formTitle,
-  category: formCategory,
-  subCategory: formSubCategory,
-  servings: Number(formServings) || 4,
-  ingredients: filteredIngs,
-  instructions: formInstructions,
-  image_url: imageUrl,
-};
+    const recipeData = {
+      title: formTitle,
+      category: formCategory,
+      subCategory: formSubCategory,
+      servings: Number(formServings) || 4,
+      ingredients: filteredIngs,
+      instructions: formInstructions,
+      image_url: `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80`,
+    };
 
     if (editingId) {
       const { error } = await supabase.from('recipes').update(recipeData).eq('id', editingId);
@@ -375,16 +372,14 @@ const recipeData = {
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-slate-800 flex flex-col font-sans relative pb-28">
 
-      {/* 1. EN-TÊTE BLANC ET ARRONDI (STYLE MAQUETTE) */}
+      {/* 1. EN-TÊTE BLANC ET ARRONDI */}
       <header className="bg-white/80 backdrop-blur-md rounded-b-[32px] px-6 py-4 shadow-sm flex justify-between items-center max-w-2xl mx-auto w-full sticky top-0 z-30">
-        {/* Menu Hamburger */}
         <button className="p-2 text-[#2C4A34] hover:bg-slate-100 rounded-full transition">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
 
-        {/* Logo Centré + Nom GILMEAL */}
         <div
           className="flex items-center gap-2 cursor-pointer"
           onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
@@ -400,7 +395,6 @@ const recipeData = {
           </span>
         </div>
 
-        {/* Bouton Profil avec pastille orange */}
         <button className="p-2 border border-slate-200 rounded-full text-slate-700 hover:bg-slate-50 transition relative">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -419,16 +413,13 @@ const recipeData = {
             <div className="max-w-2xl mx-auto w-full px-4 pt-4">
               <div className="relative rounded-[32px] overflow-hidden bg-[#FAF7F2] min-h-[160px] flex items-center p-6 shadow-sm border border-slate-100/50">
 
-                {/* Image de fond positionnée sur la droite */}
                 <div
                   className="absolute inset-0 bg-cover bg-right bg-no-repeat pointer-events-none"
                   style={{ backgroundImage: "url('/banner.png')" }}
                 />
 
-                {/* Dégradé léger à gauche pour garantir la lisibilité du texte */}
                 <div className="absolute inset-0 bg-gradient-to-r from-[#FAF7F2] via-[#FAF7F2]/90 to-transparent w-3/4"></div>
 
-                {/* Contenu Texte */}
                 <div className="relative z-10 max-w-[260px] space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-handwriting text-3xl text-[#3D6647] font-bold">
@@ -504,7 +495,7 @@ const recipeData = {
               </div>
             )}
 
-            {/* BARRE DE RECHERCHE + BOUTON NOUVELLE RECETTE ORANGE */}
+            {/* BARRE DE RECHERCHE + BOUTON NOUVELLE RECETTE */}
             <div className="flex gap-2.5 items-center">
               <div className="flex-1 bg-white rounded-2xl p-3 shadow-sm flex items-center gap-2 border border-slate-100">
                 <span className="text-slate-400">🔍</span>
@@ -533,42 +524,23 @@ const recipeData = {
                 </div>
               ) : (
                 filteredRecipes.map((r) => (
-const recipeImg = r.image_url || `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80`;
-
-  return (
-    <div
-      key={r.id}
-      onClick={() => setActiveRecipe(r)}
-      className="relative bg-white p-3 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center cursor-pointer hover:border-[#3D6647] hover:shadow-md transition gap-3"
-    >
-      {/* Miniature photo */}
-      <img
-        src={r.image_url || `https://source.unsplash.com/featured/200x200/?${encodeURIComponent(r.title)}`}
-        alt={r.title}
-        className="w-14 h-14 rounded-2xl object-cover shrink-0 bg-slate-100"
-        onError={(e) => {
-          e.target.src = '/plats.png'; // Fallback si pas de réseau
-        }}
-      />
                   <div
                     key={r.id}
                     onClick={() => setActiveRecipe(r)}
-                  <div className="w-full h-52 rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-sm">
-  <img
-    src={
-      activeRecipe.image_url ||
-      `https://source.unsplash.com/featured/800x400/?${encodeURIComponent(activeRecipe.title + ' food')}`
-    }
-    alt={activeRecipe.title}
-    className="w-full h-full object-cover object-center"
-    onError={(e) => {
-      // Si la recherche échoue, photo culinaire générique haute qualité
-      e.target.src = 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80';
-    }}
-  />
-</div>
-                    <div className="space-y-1">
-                      <span className="font-extrabold text-slate-800 text-base block pr-8">{r.title}</span>
+                    className="relative bg-white p-3 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center cursor-pointer hover:border-[#3D6647] hover:shadow-md transition gap-3"
+                  >
+                    {/* Miniature photo */}
+                    <img
+                      src={r.image_url || '/plats.png'}
+                      alt={r.title}
+                      className="w-14 h-14 rounded-2xl object-cover shrink-0 bg-slate-100"
+                      onError={(e) => {
+                        e.target.src = '/plats.png';
+                      }}
+                    />
+
+                    <div className="space-y-1 flex-1">
+                      <span className="font-extrabold text-slate-800 text-sm block pr-2">{r.title}</span>
                       <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
                         <span className="bg-[#FAF3DC] text-slate-700 font-bold px-2 py-0.5 rounded-full text-[10px]">
                           {r.subCategory || r.category}
@@ -608,7 +580,8 @@ const recipeImg = r.image_url || `https://images.unsplash.com/photo-1546069901-b
           </div>
         )}
 
-  {activeTab === 'recipes' && activeRecipe && (
+        {/* VUE DÉTAIL RECETTE */}
+        {activeTab === 'recipes' && activeRecipe && (
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 space-y-5">
             <div className="flex justify-between items-center">
               <button
@@ -633,19 +606,14 @@ const recipeImg = r.image_url || `https://images.unsplash.com/photo-1546069901-b
               </div>
             </div>
 
-            {/* --- IMAGE DE LA RECETTE --- */}
-            <div className="w-full h-48 rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-inner">
+            {/* --- IMAGE DE LA RECETTE DÉTAILLÉE --- */}
+            <div className="w-full h-52 rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-sm">
               <img
-                src={
-                  activeRecipe.image_url ||
-                  `https://image.pollinations.ai/prompt/${encodeURIComponent(
-                    activeRecipe.title + ' food photo realistic'
-                  )}?width=800&height=400&nologo=true`
-                }
+                src={activeRecipe.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80'}
                 alt={activeRecipe.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-center"
                 onError={(e) => {
-                  e.target.style.display = 'none';
+                  e.target.src = 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80';
                 }}
               />
             </div>
@@ -659,6 +627,7 @@ const recipeImg = r.image_url || `https://images.unsplash.com/photo-1546069901-b
                 Recette créée pour <strong className="text-slate-700">{activeRecipe.servings || 4} pers.</strong>
               </p>
             </div>
+
             {/* SELECTION DU NOMBRE DE PERSONNES ET AJOUT PANIER */}
             <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-slate-100 flex flex-col sm:flex-row gap-3 justify-between items-center">
               <span className="text-xs font-bold text-slate-700">
@@ -983,7 +952,6 @@ const recipeImg = r.image_url || `https://images.unsplash.com/photo-1546069901-b
 
             {planningSubTab === 'agenda' && (
               <div className="space-y-4">
-                {/* BOUTON REMPLISSAGE ALÉATOIRE + SÉLECTEUR DE DATE */}
                 <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <label className="text-xs font-extrabold text-slate-700 uppercase whitespace-nowrap">
@@ -1091,7 +1059,6 @@ const recipeImg = r.image_url || `https://images.unsplash.com/photo-1546069901-b
       <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
         <nav className="pointer-events-auto flex gap-6 bg-white/90 backdrop-blur-md px-6 py-2 rounded-full shadow-xl border border-slate-100 items-center">
           
-          {/* BOUTON FAVORIS (Aligné verticalement comme les autres) */}
           <button
             onClick={() => {
               if (activeTab !== 'recipes') {
@@ -1126,7 +1093,6 @@ const recipeImg = r.image_url || `https://images.unsplash.com/photo-1546069901-b
             <span>Favoris</span>
           </button>
 
-          {/* BOUTON RECETTES */}
           <button
             onClick={() => { 
               setActiveTab('recipes'); 
@@ -1143,7 +1109,6 @@ const recipeImg = r.image_url || `https://images.unsplash.com/photo-1546069901-b
             <span>Recettes</span>
           </button>
 
-          {/* BOUTON PLANNING */}
           <button
             onClick={() => setActiveTab('planning')}
             className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
@@ -1156,7 +1121,6 @@ const recipeImg = r.image_url || `https://images.unsplash.com/photo-1546069901-b
             <span>Planning</span>
           </button>
 
-          {/* BOUTON COURSES */}
           <button
             onClick={() => setActiveTab('shopping')}
             className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
