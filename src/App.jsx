@@ -344,7 +344,7 @@ export default function App() {
 
     const newItems = Object.values(totals);
 
-    await supabase.from('shopping_list').delete().neq('id', 0);
+    await supabase.from('shopping_list').delete().gt('id', 0);
     if (newItems.length > 0) {
       const { error } = await supabase.from('shopping_list').insert(newItems);
       if (error) console.error("Erreur réinitialisation courses :", error);
@@ -495,7 +495,7 @@ export default function App() {
     setEditingId(recipe.id);
     setFormTitle(recipe.title);
     setFormCategory(recipe.category || 'Plats');
-    setFormSubCategory(recipe.subCategory || 'Tous');
+    setFormSubCategory(recipe.sub_category || recipe.subCategory || 'Tous');
     setFormServings(recipe.servings || 4);
     setFormImageUrl(recipe.image_url || '');
     setFormIngredients(
@@ -533,7 +533,7 @@ export default function App() {
     const recipeData = {
       title: formTitle,
       category: formCategory,
-      subCategory: formSubCategory,
+      sub_category: formSubCategory,
       servings: Number(formServings) || 4,
       ingredients: filteredIngs,
       instructions: formInstructions,
@@ -583,7 +583,8 @@ export default function App() {
   // --- FILTRAGE DE RECETTES ---
   const filteredRecipes = recipes.filter((r) => {
     const matchMain = (r.category || 'Plats') === selectedMainCat;
-    const matchSub = selectedSubCat === 'Tous' || r.subCategory === selectedSubCat;
+    const recipeSubCat = r.sub_category || r.subCategory;
+    const matchSub = selectedSubCat === 'Tous' || recipeSubCat === selectedSubCat;
     
     const query = searchQuery.toLowerCase();
     const matchTitle = r.title.toLowerCase().includes(query);
@@ -685,7 +686,7 @@ export default function App() {
       return;
     }
 
-    await supabase.from('planned_meals').delete().neq('id', 0);
+    await supabase.from('planned_meals').delete().gt('id', 0);
 
     const newPlannedMeals = [];
     days.forEach((day) => {
@@ -1048,7 +1049,7 @@ export default function App() {
                       <span className="font-extrabold text-slate-800 text-sm block pr-2">{r.title}</span>
                       <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
                         <span className="bg-[#FAF3DC] text-slate-700 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                          {r.subCategory || r.category}
+                          {r.sub_category || r.subCategory || r.category}
                         </span>
                         <span>•</span>
                         <span>👥 {r.servings || 4} p.</span>

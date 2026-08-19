@@ -37,16 +37,10 @@ export default function AuthModal({ isOpen, onClose, onGuestLogin }) {
     }
   };
 
-  const handleCheckEmailAndNext = async (e) => {
+  const handleCheckEmailAndNext = (e) => {
     e.preventDefault();
     if (!email) return;
-    setLoading(true);
     setErrorMsg('');
-
-    // Vérifier si l'email existe dans Supabase / la base
-    const { data } = await supabase.from('recipes').select('creator_name').eq('creator_name', email).limit(1);
-    
-    setLoading(false);
     setView('signup_step2');
   };
 
