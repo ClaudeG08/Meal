@@ -160,43 +160,26 @@ export default function App() {
   // --- ÉTATS SELECTION NOMBRE DE PERSONNES ---
   const [selectedGuests, setSelectedGuests] = useState(4);
 
-  // --- ÉTATS PLANNING & AGENDA ---
-  const [startDate, setStartDate] = useState(() => {
-    const saved = localStorage.getItem('agenda_start_date');
-    return saved || new Date().toISOString().split('T')[0];
-  });
-
+  // --- ÉTATS PLANNING & AGENDA (SYNCHRONISÉS SUPABASE) ---
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(() => {
-    const saved = localStorage.getItem('agenda_end_date');
-    if (saved) return saved;
     const d = new Date();
     d.setDate(d.getDate() + 20);
     return d.toISOString().split('T')[0];
   });
 
-  const [plannedMeals, setPlannedMeals] = useState(() => {
-    const saved = localStorage.getItem('planned_meals_v2');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [agenda, setAgenda] = useState(() => {
-    const saved = localStorage.getItem('agenda_v2');
-    return saved ? JSON.parse(saved) : {};
-  });
-
+  const [plannedMeals, setPlannedMeals] = useState([]);
+  const [agenda, setAgenda] = useState({});
   const [planningSubTab, setPlanningSubTab] = useState('meals');
 
-  // --- ÉTATS LISTE DE COURSES AUTONOME ---
-  const [shoppingList, setShoppingList] = useState(() => {
-    const saved = localStorage.getItem('shopping_list_v1');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // --- ÉTATS LISTE DE COURSES (SYNCHRONISÉE SUPABASE) ---
+  const [shoppingList, setShoppingList] = useState([]);
   const [newIngredientName, setNewIngredientName] = useState('');
   const [newIngredientQty, setNewIngredientQty] = useState('');
   const [newIngredientUnit, setNewIngredientUnit] = useState('g');
 
+  // --- AUTHENTIFICATION ---
   useEffect(() => {
-    // 1. Vérifie la session active
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (!session?.user) {
@@ -204,7 +187,6 @@ export default function App() {
       }
     });
 
-    // 2. Écoute les évènements d'auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -215,6 +197,79 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // --- RÉCUPÉRATION & SYNCHRONISATION EN TEMPS RÉEL (REALTIME) ---
+  useEffect(() => {
+    fetchRecipes();
+    fetchPlannedMeals();
+    fetchShoppingList();
+
+    // Abonnement Realtime pour le planning
+    const mealsChannel = supabase
+      .channel('public:planned_meals')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'planned_meals' }, () => {
+        fetchPlannedMeals();
+      })
+      .subscribe();
+
+    // Abonnement Realtime pour les courses
+    const shoppingChannel = supabase
+      .channel('public:shopping_list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shopping_list' }, () => {
+        fetchShoppingList();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(mealsChannel);
+      supabase.removeChannel(shoppingChannel);
+    };
+  }, [user]);
+
+  const fetchRecipes = async () => {
+    const { data } = await supabase.from('recipes').select('*').order('id', { ascending: false });
+    if (data) setRecipes(data);
+  };
+
+  const fetchPlannedMeals = async () => {
+    const { data, error } = await supabase.from('planned_meals').select('*');
+    if (error) {
+      console.error('Erreur chargement repas planifiés :', error);
+      return;
+    }
+
+    if (data) {
+      const mapped = data.map((item) => ({
+        id: item.id,
+        recipeId: item.recipe_id,
+        recipeTitle: item.recipe_title,
+        baseServings: item.base_servings || 4,
+        ingredients: item.ingredients || [],
+        guests: item.guests || 4,
+        assignedDay: item.assigned_day,
+        assignedSlot: item.assigned_slot,
+      }));
+      setPlannedMeals(mapped);
+
+      // Reconstitution de l'agenda
+      const newAgenda = {};
+      mapped.forEach((m) => {
+        if (m.assignedDay && m.assignedSlot) {
+          newAgenda[`${m.assignedDay}-${m.assignedSlot}`] = m.id;
+        }
+      });
+      setAgenda(newAgenda);
+    }
+  };
+
+  const fetchShoppingList = async () => {
+    const { data, error } = await supabase.from('shopping_list').select('*').order('id', { ascending: true });
+    if (error) {
+      console.error('Erreur chargement liste de courses :', error);
+      return;
+    }
+    if (data) setShoppingList(data);
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setIsGuest(false);
@@ -224,39 +279,9 @@ export default function App() {
   const handleGuestLogin = () => {
     setIsGuest(true);
     setShowAuthModal(false);
-    // Si l'invité était sur un autre onglet, redirection vers recettes
     if (activeTab !== 'recipes') {
       setActiveTab('recipes');
     }
-  };
-
-  useEffect(() => {
-    localStorage.setItem('planned_meals_v2', JSON.stringify(plannedMeals));
-  }, [plannedMeals]);
-
-  useEffect(() => {
-    localStorage.setItem('agenda_v2', JSON.stringify(agenda));
-  }, [agenda]);
-
-  useEffect(() => {
-    localStorage.setItem('agenda_start_date', startDate);
-  }, [startDate]);
-
-  useEffect(() => {
-    localStorage.setItem('agenda_end_date', endDate);
-  }, [endDate]);
-
-  useEffect(() => {
-    localStorage.setItem('shopping_list_v1', JSON.stringify(shoppingList));
-  }, [shoppingList]);
-
-  useEffect(() => {
-    fetchRecipes();
-  }, []);
-
-  const fetchRecipes = async () => {
-    const { data } = await supabase.from('recipes').select('*').order('id', { ascending: false });
-    if (data) setRecipes(data);
   };
 
   useEffect(() => {
@@ -266,12 +291,12 @@ export default function App() {
   }, [activeRecipe]);
 
   // --- GÉNÉRATION DES COURSES DEPUIS LE PLANNING ---
-  const generateShoppingListFromPlanning = () => {
+  const generateShoppingListFromPlanning = async () => {
     const totals = {};
     plannedMeals.forEach((meal) => {
       const baseServings = meal.baseServings || 4;
       const ratio = meal.guests / baseServings;
-      meal.ingredients.forEach((ing) => {
+      (meal.ingredients || []).forEach((ing) => {
         const unit = ing.unit || 'g';
         const key = `${ing.name.toLowerCase().trim()}_${unit}`;
         const qty = (Number(ing.quantity) || 0) * ratio;
@@ -279,7 +304,6 @@ export default function App() {
           totals[key].quantity += qty;
         } else {
           totals[key] = {
-            id: Date.now() + Math.random(),
             name: ing.name,
             quantity: qty,
             unit: unit,
@@ -289,49 +313,56 @@ export default function App() {
       });
     });
 
-    const newList = Object.values(totals);
-    setShoppingList(newList);
+    const newItems = Object.values(totals);
+
+    // Supprimer les anciens éléments et insérer les nouveaux
+    await supabase.from('shopping_list').delete().neq('id', 0);
+    if (newItems.length > 0) {
+      const { error } = await supabase.from('shopping_list').insert(newItems);
+      if (error) console.error("Erreur réinitialisation courses :", error);
+    }
+    fetchShoppingList();
   };
 
-  const addCustomShoppingItem = (e) => {
+  const addCustomShoppingItem = async (e) => {
     e.preventDefault();
     if (!newIngredientName.trim()) return;
 
     const newItem = {
-      id: Date.now(),
       name: newIngredientName.trim(),
       quantity: Number(newIngredientQty) || 0,
       unit: newIngredientUnit,
       checked: false,
     };
 
-    setShoppingList([...shoppingList, newItem]);
+    const { error } = await supabase.from('shopping_list').insert([newItem]);
+    if (error) {
+      alert(`Erreur ajout article : ${error.message}`);
+      return;
+    }
+
     setNewIngredientName('');
     setNewIngredientQty('');
     setNewIngredientUnit('g');
+    fetchShoppingList();
   };
 
-  const toggleShoppingItem = (id) => {
-    setShoppingList(
-      shoppingList.map((item) =>
-        item.id === id ? { ...item, checked: !item.checked } : item
-      )
-    );
+  const toggleShoppingItem = async (id, currentChecked) => {
+    setShoppingList(shoppingList.map((item) => (item.id === id ? { ...item, checked: !currentChecked } : item)));
+    await supabase.from('shopping_list').update({ checked: !currentChecked }).eq('id', id);
   };
 
-  const updateShoppingItem = (id, field, value) => {
-    setShoppingList(
-      shoppingList.map((item) =>
-        item.id === item.id ? { ...item, [field]: value } : item
-      )
-    );
+  const updateShoppingItem = async (id, field, value) => {
+    setShoppingList(shoppingList.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
+    await supabase.from('shopping_list').update({ [field]: value }).eq('id', id);
   };
 
-  const removeShoppingItem = (id) => {
+  const removeShoppingItem = async (id) => {
     setShoppingList(shoppingList.filter((item) => item.id !== id));
+    await supabase.from('shopping_list').delete().eq('id', id);
   };
 
-  // --- GÉNÉRATION DES JOURS ---
+  // --- GÉNÉRATION DES JOURS AGENDA ---
   const generateDays = () => {
     const daysList = [];
     const start = startDate ? new Date(startDate) : new Date();
@@ -469,8 +500,6 @@ export default function App() {
     if (!formTitle.trim()) return;
 
     const filteredIngs = formIngredients.filter((ing) => ing.name.trim() !== '');
-
-    // Extraction d'un nom/identifiant d'utilisateur lisible
     const userDisplayName = user?.user_metadata?.username || user?.email?.split('@')[0] || user?.id || 'Inconnu';
 
     const recipeData = {
@@ -523,12 +552,11 @@ export default function App() {
     }
   };
 
-  // --- FILTRAGE DES RECETTES (PAR TITRE, CATÉGORIES OU UTILISATEUR) ---
+  // --- FILTRAGE DES RECETTES ---
   const filteredRecipes = recipes.filter((r) => {
     const matchMain = (r.category || 'Plats') === selectedMainCat;
     const matchSub = selectedSubCat === 'Tous' || r.subCategory === selectedSubCat;
     
-    // Recherche par Titre OU par Identifiant du Créateur
     const query = searchQuery.toLowerCase();
     const matchTitle = r.title.toLowerCase().includes(query);
     const matchCreator = (r.creator_name || '').toLowerCase().includes(query) || (r.created_by || '').toLowerCase().includes(query);
@@ -538,7 +566,7 @@ export default function App() {
     return matchMain && matchSub && matchSearch && matchesFavorite;
   });
 
-  // --- RESTRICTION DES ONGLETS COMPTES PROTÉGÉS ---
+  // --- RESTRICTION DES ONGLETS ---
   const handleTabChange = (tab) => {
     if ((isGuest || !user) && (tab === 'planning' || tab === 'shopping' || (tab === 'recipes' && showFavoritesOnly))) {
       alert("Cet onglet est verrouillé. Veuillez vous connecter pour y accéder.");
@@ -551,60 +579,73 @@ export default function App() {
     setActiveTab(tab);
   };
 
-  // --- PLANNING & COURSES ---
-  const addRecipeToPlanning = (recipe) => {
+  // --- GESTION DES REPAS PLANIFIÉS (SUPABASE) ---
+  const addRecipeToPlanning = async (recipe) => {
     if (isGuest || !user) {
       alert("Veuillez vous connecter pour ajouter des repas au panier/planning.");
       setShowAuthModal(true);
       return;
     }
-    const newItem = {
-      id: Date.now(),
-      recipeId: recipe.id,
-      recipeTitle: recipe.title,
-      baseServings: recipe.servings || 4,
-      ingredients: recipe.ingredients || [],
+
+    const payload = {
+      recipe_id: recipe.id,
+      recipe_title: recipe.title,
+      base_servings: recipe.servings || 4,
       guests: selectedGuests,
-      assignedDay: null,
-      assignedSlot: null,
+      ingredients: recipe.ingredients || [],
+      assigned_day: null,
+      assigned_slot: null,
     };
-    setPlannedMeals([...plannedMeals, newItem]);
+
+    const { error } = await supabase.from('planned_meals').insert([payload]);
+    if (error) {
+      alert(`Erreur lors de l'ajout au planning : ${error.message}`);
+      return;
+    }
+
+    fetchPlannedMeals();
     alert(`"${recipe.title}" (${selectedGuests} pers.) ajouté au panier !`);
   };
 
-  const removePlannedMeal = (id) => {
-    setPlannedMeals(plannedMeals.filter((m) => m.id !== id));
-
-    const updatedAgenda = { ...agenda };
-    Object.keys(updatedAgenda).forEach((key) => {
-      if (updatedAgenda[key] === id) {
-        delete updatedAgenda[key];
-      }
-    });
-    setAgenda(updatedAgenda);
+  const removePlannedMeal = async (id) => {
+    await supabase.from('planned_meals').delete().eq('id', id);
+    fetchPlannedMeals();
   };
 
-  const updateGuests = (id, delta) => {
-    setPlannedMeals(
-      plannedMeals.map((item) =>
-        item.id === id ? { ...item, guests: Math.max(1, item.guests + delta) } : item
-      )
-    );
+  const updateGuests = async (id, delta) => {
+    const meal = plannedMeals.find((m) => m.id === id);
+    if (!meal) return;
+    const newGuests = Math.max(1, meal.guests + delta);
+
+    setPlannedMeals(plannedMeals.map((m) => (m.id === id ? { ...m, guests: newGuests } : m)));
+    await supabase.from('planned_meals').update({ guests: newGuests }).eq('id', id);
   };
 
-  const assignMealToAgenda = (dayId, slot, mealId) => {
-    const key = `${dayId}-${slot}`;
+  const assignMealToAgenda = async (dayId, slot, mealId) => {
     const parsedMealId = mealId ? Number(mealId) : null;
-    setAgenda((prev) => ({ ...prev, [key]: parsedMealId }));
 
-    setPlannedMeals((prev) =>
-      prev.map((meal) =>
-        meal.id === parsedMealId ? { ...meal, assignedDay: dayId, assignedSlot: slot } : meal
-      )
-    );
+    // Si le repas était déjà affecté à un slot, on réinitialise l'ancien slot
+    if (parsedMealId) {
+      await supabase
+        .from('planned_meals')
+        .update({ assigned_day: dayId, assigned_slot: slot })
+        .eq('id', parsedMealId);
+    } else {
+      // Désaffectation du repas actuellement présent dans ce slot
+      const currentKey = `${dayId}-${slot}`;
+      const currentMealId = agenda[currentKey];
+      if (currentMealId) {
+        await supabase
+          .from('planned_meals')
+          .update({ assigned_day: null, assigned_slot: null })
+          .eq('id', currentMealId);
+      }
+    }
+
+    fetchPlannedMeals();
   };
 
-  const handleRandomAgendaFill = () => {
+  const handleRandomAgendaFill = async () => {
     if (recipes.length === 0) {
       alert("Vous devez avoir au moins une recette enregistrée pour remplir l'agenda.");
       return;
@@ -617,32 +658,31 @@ export default function App() {
       return;
     }
 
-    const newAgenda = {};
-    const newPlannedMeals = [];
+    // Effacer les repas enregistrés actuels
+    await supabase.from('planned_meals').delete().neq('id', 0);
 
+    const newPlannedMeals = [];
     days.forEach((day) => {
       ['M', 'S'].forEach((slot) => {
         const randomRecipe = recipes[Math.floor(Math.random() * recipes.length)];
-        const mealId = Date.now() + Math.floor(Math.random() * 100000);
-
         newPlannedMeals.push({
-          id: mealId,
-          recipeId: randomRecipe.id,
-          recipeTitle: randomRecipe.title,
-          baseServings: randomRecipe.servings || 4,
-          ingredients: randomRecipe.ingredients || [],
+          recipe_id: randomRecipe.id,
+          recipe_title: randomRecipe.title,
+          base_servings: randomRecipe.servings || 4,
           guests: randomRecipe.servings || 4,
-          assignedDay: day.id,
-          assignedSlot: slot,
+          ingredients: randomRecipe.ingredients || [],
+          assigned_day: day.id,
+          assigned_slot: slot,
         });
-
-        const key = `${day.id}-${slot}`;
-        newAgenda[key] = mealId;
       });
     });
 
-    setPlannedMeals(newPlannedMeals);
-    setAgenda(newAgenda);
+    const { error } = await supabase.from('planned_meals').insert(newPlannedMeals);
+    if (error) {
+      alert(`Erreur remplissage : ${error.message}`);
+    } else {
+      fetchPlannedMeals();
+    }
   };
 
   return (
@@ -792,7 +832,6 @@ export default function App() {
                 />
               </div>
 
-              {/* Bouton Ajouter uniquement accessible aux utilisateurs connectés */}
               {!isGuest && user && (
                 <button
                   onClick={openCreateForm}
@@ -888,7 +927,6 @@ export default function App() {
                 ⬅ Retour aux recettes
               </button>
 
-              {/* Boutons Modifier/Supprimer uniquement pour le créateur connecté */}
               {user && (activeRecipe.created_by === user.id || activeRecipe.user_id === user.id) && (
                 <div className="flex gap-3">
                   <button
@@ -1254,7 +1292,7 @@ export default function App() {
           </div>
         )}
 
-        {/* SECTION PLANNING (PROTÉGÉE) */}
+        {/* SECTION PLANNING */}
         {activeTab === 'planning' && !isGuest && user && (
           <div className="space-y-4">
             <div className="flex bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
@@ -1424,7 +1462,7 @@ export default function App() {
           </div>
         )}
 
-        {/* SECTION PANIER / COURSES (PROTÉGÉE) */}
+        {/* SECTION PANIER / COURSES */}
         {activeTab === 'shopping' && !isGuest && user && (
           <div className="space-y-4">
             <div className="bg-white p-3 sm:p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
@@ -1439,7 +1477,6 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Formulaire pour ajouter un ingrédient manuellement */}
               <form onSubmit={addCustomShoppingItem} className="flex gap-1.5 items-center pt-2">
                 <input
                   type="text"
@@ -1474,7 +1511,6 @@ export default function App() {
                 </button>
               </form>
 
-              {/* Liste complète des éléments */}
               {shoppingList.length === 0 ? (
                 <p className="text-slate-400 text-xs font-semibold text-center py-4">
                   Aucun article dans la liste. Cliquez sur "Importer liste repas" ou ajoutez un élément ci-dessus.
@@ -1487,7 +1523,7 @@ export default function App() {
                         <input
                           type="checkbox"
                           checked={item.checked}
-                          onChange={() => toggleShoppingItem(item.id)}
+                          onChange={() => toggleShoppingItem(item.id, item.checked)}
                           className="w-4 h-4 text-[#3D6647] rounded-md focus:ring-[#3D6647] border-slate-300 cursor-pointer shrink-0"
                         />
                         <input
@@ -1536,11 +1572,10 @@ export default function App() {
 
       </main>
 
-      {/* BARRE DE NAVIGATION FLOTTANTE AVEC VERROUILLAGE VISUEL ET ACCÈS RESTREINT */}
+      {/* BARRE DE NAVIGATION FLOTTANTE */}
       <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
         <nav className="pointer-events-auto flex gap-6 bg-white/90 backdrop-blur-md px-6 py-2 rounded-full shadow-xl border border-slate-100 items-center">
           
-          {/* FAVORIS */}
           <button
             onClick={() => {
               if (isGuest || !user) {
@@ -1581,7 +1616,6 @@ export default function App() {
             <span>Favoris</span>
           </button>
 
-          {/* RECETTES (OUVERT A TOUS) */}
           <button
             onClick={() => handleTabChange('recipes')}
             className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
@@ -1594,7 +1628,6 @@ export default function App() {
             <span>Recettes</span>
           </button>
 
-          {/* PLANNING (VERROUILLÉ EN INVITÉ) */}
           <button
             onClick={() => handleTabChange('planning')}
             className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
@@ -1608,7 +1641,6 @@ export default function App() {
             <span>Planning</span>
           </button>
 
-          {/* COURSES (VERROUILLÉ EN INVITÉ) */}
           <button
             onClick={() => handleTabChange('shopping')}
             className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
@@ -1625,7 +1657,6 @@ export default function App() {
         </nav>
       </div>
 
-      {/* MODALE AUTHENTIFICATION COMPLÈTE */}
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
