@@ -1273,7 +1273,7 @@ const handleConfirmSideChoice = () => {
   <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
     <div className="flex justify-between items-center border-b pb-3">
       <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
-        <span>🏠</span> Gestion du Foyer ("Home")
+        <span>🏠</span> Gestion du Foyer
       </h2>
       <button
         onClick={() => setProfileView('recipes')}
