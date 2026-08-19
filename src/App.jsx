@@ -243,7 +243,7 @@ export default function App() {
 
     const { data: home, error: homeError } = await supabase
       .from('homes')
-      .insert([{ name: newHomeName.trim(), code: generatedCode }])
+      .insert([{ name: newHomeName.trim(), invite_code: generatedCode }])
       .select()
       .single();
 
@@ -263,7 +263,7 @@ export default function App() {
 
     setUserHome(home);
     setNewHomeName('');
-    alert(`Foyer "${home.name}" créé avec succès ! Code de partage : ${home.code}`);
+    alert(`Foyer "${home.name}" créé avec succès ! Code de partage : ${home.invite_code}`);
   };
 
   // --- REJOINDRE UN HOME ---
@@ -277,7 +277,7 @@ export default function App() {
     const { data: home, error: homeError } = await supabase
       .from('homes')
       .select('*')
-      .eq('code', homeCode.trim().toUpperCase())
+      .eq('invite_code', homeCode.trim().toUpperCase())
       .single();
 
     if (homeError || !home) {
@@ -1045,11 +1045,11 @@ export default function App() {
                 <div className="bg-white/80 p-3 rounded-xl border border-[#3D6647]/20 flex justify-between items-center">
                   <div>
                     <p className="text-[10px] text-slate-500 font-bold uppercase">Code d'invitation</p>
-                    <p className="text-base font-black text-[#2C4A34] tracking-widest">{userHome.code}</p>
+                    <p className="text-base font-black text-[#2C4A34] tracking-widest">{userHome.invite_code}</p>
                   </div>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(userHome.code);
+                      navigator.clipboard.writeText(userHome.invite_code);
                       alert("Code copié dans le presse-papier !");
                     }}
                     className="text-xs bg-[#3D6647] text-white font-bold px-3 py-1.5 rounded-lg hover:bg-[#2C4A34]"
