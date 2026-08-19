@@ -531,6 +531,8 @@ const exportShoppingListToPDF = () => {
 
     // Sauvegarde du fichier
     doc.save(`liste-de-courses-${new Date().toISOString().split('T')[0]}.pdf`);
+alert("La liste de courses a été téléchargée avec succès !");
+
   } catch (error) {
     console.error("Erreur lors de la génération du PDF :", error);
     alert("Une erreur est survenue lors de l'exportation du PDF.");
