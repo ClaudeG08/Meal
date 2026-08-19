@@ -14,6 +14,10 @@ const MAIN_CATEGORIES = [
   { name: 'Entrées', image: '/entrees.png', bg: 'bg-[#E8F3EB]' },
   { name: 'Desserts', image: '/desserts.png', bg: 'bg-[#F4EAF4]' },
   { name: 'Boissons', image: '/icons/drink.png', bg: 'bg-[#E6F4F8]' },
+{ name: 'Petit dej', image: '/icons/croissant.png', bg: 'bg-[#FFF3E0]' },
+{ name: 'Autres', image: '/icons/pain.png', bg: 'bg-[#F0F0F0]]' },
+
+
 ];
 
 const SUB_CATEGORIES = {
@@ -49,6 +53,12 @@ const SUB_CATEGORIES = {
     { name: 'Alcools', image: '/icons/alcool.png' },
     { name: 'Chauds', image: '/icons/hot.png' },
     { name: 'Autre', image: '/icons/other_drink.png' },
+  ],
+'Petit dej': [
+    { name: 'Tous', image: '/icons/tous.png' },
+  ],
+'Autres': [
+    { name: 'Tous', image: '/icons/tous.png' },
   ],
 };
 
@@ -1520,7 +1530,7 @@ alert("La liste de courses a été téléchargée avec succès !");
                     onClick={() => addRecipeToPlanning(activeRecipe)}
                     className="bg-[#EF6A45] hover:bg-[#d95a37] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition"
                   >
-                    + Ajouter au panier
+                    + Ajouter à la liste
                   </button>
                 )}
               </div>
@@ -1837,7 +1847,7 @@ alert("La liste de courses a été téléchargée avec succès !");
                   <div className="bg-white p-8 rounded-3xl text-center border border-slate-100 shadow-sm space-y-2">
                     <span className="text-3xl">🛒</span>
                     <p className="text-slate-500 font-semibold text-sm">
-                      Aucun repas sélectionné. Allez dans "Recettes" et cliquez sur "+ Ajouter au panier".
+                      Aucun repas sélectionné. Allez dans "Recettes" et cliquez sur "+ Ajouter à la liste".
                     </p>
                   </div>
                 ) : (
@@ -2141,7 +2151,7 @@ alert("La liste de courses a été téléchargée avec succès !");
               </svg>
               {isGuest && <span className="absolute -top-1 -right-1 text-[10px]">🔒</span>}
             </div>
-            <span>Favoris</span>
+            <span>Mes favoris</span>
           </button>
 
           <button
@@ -2166,7 +2176,7 @@ alert("La liste de courses a été téléchargée avec succès !");
               📅
               {isGuest && <span className="absolute -top-1 -right-1 text-[10px]">🔒</span>}
             </div>
-            <span>Planning</span>
+            <span>Mes repas</span>
           </button>
 
           <button
@@ -2179,7 +2189,7 @@ alert("La liste de courses a été téléchargée avec succès !");
               🛒
               {isGuest && <span className="absolute -top-1 -right-1 text-[10px]">🔒</span>}
             </div>
-            <span>Courses</span>
+            <span>Mes courses</span>
           </button>
 
         </nav>
