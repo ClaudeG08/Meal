@@ -1083,92 +1083,104 @@ const handleLeaveHome = async () => {
           </div>
         )}
 
-        {/* VUE HOME (FOYER PARTICIPATIF) */}
-        {profileView === 'home' && user && (
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
-                <span>🏠</span> Gestion du Foyer ("Home")
-              </h2>
-              <button
-                onClick={() => setProfileView('recipes')}
-                className="text-xs font-extrabold text-[#3D6647] hover:underline"
-              >
-                ← Retour
-              </button>
-            </div>
+       {/* VUE HOME (FOYER PARTICIPATIF) */}
+{profileView === 'home' && user && (
+  <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+    <div className="flex justify-between items-center border-b pb-3">
+      <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+        <span>🏠</span> Gestion du Foyer ("Home")
+      </h2>
+      <button
+        onClick={() => setProfileView('recipes')}
+        className="text-xs font-extrabold text-[#3D6647] hover:underline"
+      >
+        ← Retour
+      </button>
+    </div>
 
-            {userHome ? (
-              <div className="bg-[#E8F3EB] p-5 rounded-2xl border border-[#3D6647]/30 space-y-3">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-sm font-extrabold text-[#2C4A34]">Votre Foyer Actif</h3>
-                  <span className="bg-[#3D6647] text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
-                    Actif
-                  </span>
-                </div>
-                <p className="text-lg font-black text-slate-800">{userHome.name}</p>
-                <div className="bg-white/80 p-3 rounded-xl border border-[#3D6647]/20 flex justify-between items-center">
-                  <div>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase">Code d'invitation</p>
-                    <p className="text-base font-black text-[#2C4A34] tracking-widest">{userHome.invite_code}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(userHome.invite_code);
-                      alert("Code copié dans le presse-papier !");
-                    }}
-                    className="text-xs bg-[#3D6647] text-white font-bold px-3 py-1.5 rounded-lg hover:bg-[#2C4A34]"
-                  >
-                    Copier
-                  </button>
-                </div>
-                <p className="text-[11px] text-slate-600 font-medium">
-                  Partagez ce code avec les membres de votre famille pour synchroniser vos listes.
-                </p>
-              </div>
-            ) : (
-              <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                Vous n'appartenez à aucun foyer pour le moment. Créez-en un ou rejoignez-en un grâce à un code.
-              </p>
-            )}
-
-            <div className="space-y-4">
-              <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-slate-200 space-y-3">
-                <h3 className="text-xs font-extrabold text-slate-700 uppercase">Créer un nouveau foyer</h3>
-                <input
-                  type="text"
-                  placeholder="Nom du foyer (ex: Maison, Coloc...)"
-                  value={newHomeName}
-                  onChange={(e) => setNewHomeName(e.target.value)}
-                  className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
-                />
-                <button
-                  onClick={handleCreateHome}
-                  className="w-full bg-[#2C4A34] text-white font-extrabold py-3 rounded-2xl text-xs hover:bg-[#1f3525] transition"
-                >
-                  + Créer mon Home
-                </button>
-              </div>
-
-              <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-slate-200 space-y-3">
-                <h3 className="text-xs font-extrabold text-slate-700 uppercase">Rejoindre un foyer existant</h3>
-                <input
-                  type="text"
-                  placeholder="Entrer le code du Home..."
-                  value={homeCode}
-                  onChange={(e) => setHomeCode(e.target.value)}
-                  className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
-                />
-                <button
-                  onClick={handleJoinHome}
-                  className="w-full bg-[#EF6A45] hover:bg-[#d95a37] text-white font-extrabold py-3 rounded-2xl text-xs transition"
-                >
-                  Rejoindre
-                </button>
-              </div>
-            </div>
+    {userHome ? (
+      /* --- SI L'UTILISATEUR A UN FOYER : AFFICHER INFOS + BOUTON QUITTER --- */
+      <div className="space-y-4">
+        <div className="bg-[#E8F3EB] p-5 rounded-2xl border border-[#3D6647]/30 space-y-3">
+          <div className="flex justify-between items-center">
+            <h3 className="text-sm font-extrabold text-[#2C4A34]">Votre Foyer Actif</h3>
+            <span className="bg-[#3D6647] text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+              Actif
+            </span>
           </div>
-        )}
+          <p className="text-lg font-black text-slate-800">{userHome.name}</p>
+          <div className="bg-white/80 p-3 rounded-xl border border-[#3D6647]/20 flex justify-between items-center">
+            <div>
+              <p className="text-[10px] text-slate-500 font-bold uppercase">Code d'invitation</p>
+              <p className="text-base font-black text-[#2C4A34] tracking-widest">{userHome.invite_code}</p>
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(userHome.invite_code);
+                alert("Code copié dans le presse-papier !");
+              }}
+              className="text-xs bg-[#3D6647] text-white font-bold px-3 py-1.5 rounded-lg hover:bg-[#2C4A34]"
+            >
+              Copier
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-600 font-medium">
+            Partagez ce code avec les membres de votre famille pour synchroniser vos listes.
+          </p>
+        </div>
+
+        {/* BOUTON POUR QUITTER LE FOYER */}
+        <button
+          onClick={handleLeaveHome}
+          className="w-full bg-red-50 hover:bg-red-100 text-[#EF6A45] font-extrabold py-3 rounded-2xl text-xs border border-red-200 transition flex items-center justify-center gap-2"
+        >
+          <span>🚪</span> Quitter ce foyer
+        </button>
+      </div>
+    ) : (
+      /* --- SI L'UTILISATEUR N'A PAS DE FOYER : AFFICHER LES FORMULAIRES --- */
+      <div className="space-y-4">
+        <p className="text-xs text-slate-600 leading-relaxed font-medium">
+          Vous n'appartenez à aucun foyer pour le moment. Créez-en un ou rejoignez-en un grâce à un code.
+        </p>
+
+        <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-slate-200 space-y-3">
+          <h3 className="text-xs font-extrabold text-slate-700 uppercase">Créer un nouveau foyer</h3>
+          <input
+            type="text"
+            placeholder="Nom du foyer (ex: Maison, Coloc...)"
+            value={newHomeName}
+            onChange={(e) => setNewHomeName(e.target.value)}
+            className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
+          />
+          <button
+            onClick={handleCreateHome}
+            className="w-full bg-[#2C4A34] text-white font-extrabold py-3 rounded-2xl text-xs hover:bg-[#1f3525] transition"
+          >
+            + Créer mon Home
+          </button>
+        </div>
+
+        <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-slate-200 space-y-3">
+          <h3 className="text-xs font-extrabold text-slate-700 uppercase">Rejoindre un foyer existant</h3>
+          <input
+            type="text"
+            placeholder="Entrer le code du Home..."
+            value={homeCode}
+            onChange={(e) => setHomeCode(e.target.value)}
+            className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
+          />
+          <button
+            onClick={handleJoinHome}
+            className="w-full bg-[#EF6A45] hover:bg-[#d95a37] text-white font-extrabold py-3 rounded-2xl text-xs transition"
+          >
+            Rejoindre
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+)}
 
         {/* SECTION RECETTES */}
         {profileView === 'recipes' && activeTab === 'recipes' && !activeRecipe && (
