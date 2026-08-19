@@ -193,6 +193,11 @@ export default function App() {
   const [newIngredientQty, setNewIngredientQty] = useState('');
   const [newIngredientUnit, setNewIngredientUnit] = useState('g');
 
+// --- ÉTATS D'ASSOCIATION D'ACCOMPAGNEMENT ---
+const [showSideModal, setShowSideModal] = useState(false);
+const [pendingMainRecipe, setPendingMainRecipe] = useState(null);
+const [selectedSideRecipeId, setSelectedSideRecipeId] = useState('');
+
   // --- FERMER LE MENU AU CLIC EXTÉRIEUR ---
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -873,49 +878,86 @@ alert("La liste de courses a été téléchargée avec succès !");
   };
 
   // --- GESTION PLANNING / AGENDA ---
-  const addRecipeToPlanning = async (recipe) => {
-    if (isGuest || !user) {
-      alert("Veuillez vous connecter pour ajouter des repas au panier/planning.");
-      setAuthModalView('welcome');
-      setShowAuthModal(true);
-      return;
-    }
+const addRecipeToPlanning = async (recipe, sideRecipe = null) => {
+  if (isGuest || !user) {
+    alert("Veuillez vous connecter pour ajouter des repas au panier/planning.");
+    setAuthModalView('welcome');
+    setShowAuthModal(true);
+    return;
+  }
 
-    const payload = {
-      recipe_id: recipe.id,
-      recipe_title: recipe.title,
-      base_servings: recipe.servings || 4,
-      guests: selectedGuests,
-      ingredients: recipe.ingredients || [],
-      assigned_day: null,
-      assigned_slot: null,
-      home_id: userHome?.id || null,
-      user_id: user?.id || null,
-    };
+  // Si c'est Viandes et poissons et qu'aucun accompagnement n'a été spécifié/choisi
+  if (recipe.category === 'Viandes et poissons' && !sideRecipe && sideRecipe !== false) {
+    setPendingMainRecipe(recipe);
+    setSelectedSideRecipeId('');
+    setShowSideModal(true);
+    return;
+  }
 
-    const { data, error } = await supabase.from('planned_meals').insert([payload]).select();
-    if (error) {
-      alert(`Erreur lors de l'ajout au planning : ${error.message}`);
-      return;
-    }
+  // On prépare les données du plat principal
+  let combinedTitle = recipe.title;
+  let combinedIngredients = [...(recipe.ingredients || [])];
 
-    if (data && data.length > 0) {
-      const newMeal = {
-        id: data[0].id,
-        recipeId: data[0].recipe_id,
-        recipeTitle: data[0].recipe_title,
-        baseServings: data[0].base_servings || 4,
-        ingredients: data[0].ingredients || [],
-        guests: data[0].guests || 4,
-        assignedDay: data[0].assigned_day,
-        assignedSlot: data[0].assigned_slot,
-      };
-      setPlannedMeals((prev) => [...prev, newMeal]);
-    }
+  // Si un accompagnement est lié
+  if (sideRecipe) {
+    combinedTitle += ` + ${sideRecipe.title}`;
+    
+    // Adaptation du ratio d'ingrédients de l'accompagnement si les portions diffèrent
+    const sideBaseServings = sideRecipe.servings || 4;
+    const recipeBaseServings = recipe.servings || 4;
+    
+    const adaptedSideIngredients = (sideRecipe.ingredients || []).map(ing => ({
+      ...ing,
+      quantity: ((Number(ing.quantity) || 0) * (recipeBaseServings / sideBaseServings)).toString()
+    }));
 
-    alert(`"${recipe.title}" a été ajouté au panier !`);
+    combinedIngredients = [...combinedIngredients, ...adaptedSideIngredients];
+  }
+
+  const payload = {
+    recipe_id: recipe.id,
+    recipe_title: combinedTitle,
+    base_servings: recipe.servings || 4,
+    guests: selectedGuests,
+    ingredients: combinedIngredients,
+    assigned_day: null,
+    assigned_slot: null,
+    home_id: userHome?.id || null,
+    user_id: user?.id || null,
   };
 
+  const { data, error } = await supabase.from('planned_meals').insert([payload]).select();
+  if (error) {
+    alert(`Erreur lors de l'ajout au planning : ${error.message}`);
+    return;
+  }
+
+  if (data && data.length > 0) {
+    const newMeal = {
+      id: data[0].id,
+      recipeId: data[0].recipe_id,
+      recipeTitle: data[0].recipe_title,
+      baseServings: data[0].base_servings || 4,
+      ingredients: data[0].ingredients || [],
+      guests: data[0].guests || 4,
+      assignedDay: data[0].assigned_day,
+      assignedSlot: data[0].assigned_slot,
+    };
+    setPlannedMeals((prev) => [...prev, newMeal]);
+  }
+
+  setShowSideModal(false);
+  setPendingMainRecipe(null);
+  alert(`"${combinedTitle}" a été ajouté au panier !`);
+};
+
+const handleConfirmSideChoice = () => {
+  if (!pendingMainRecipe) return;
+
+  const sideRecipe = recipes.find((r) => r.id === Number(selectedSideRecipeId));
+  // Si sideRecipe est undefined, il sera ajouté seul sans accompagnement
+  addRecipeToPlanning(pendingMainRecipe, sideRecipe || false);
+};
   const removePlannedMeal = async (id) => {
     await supabase.from('planned_meals').delete().eq('id', id);
     fetchPlannedMeals();
@@ -1160,6 +1202,71 @@ alert("La liste de courses a été téléchargée avec succès !");
             </div>
           </div>
         )}
+
+{/* MODALE SELECTION D'ACCOMPAGNEMENT */}
+{showSideModal && pendingMainRecipe && (
+  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-xl border border-slate-100">
+      <div className="flex justify-between items-center border-b pb-3">
+        <h3 className="font-extrabold text-slate-800 text-base">
+          🥗 Choisir un accompagnement
+        </h3>
+        <button
+          onClick={() => {
+            setShowSideModal(false);
+            setPendingMainRecipe(null);
+          }}
+          className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 font-bold flex items-center justify-center hover:bg-slate-200"
+        >
+          ✕
+        </button>
+      </div>
+
+      <p className="text-xs text-slate-600 font-medium">
+        Vous avez sélectionné <strong className="text-slate-800">{pendingMainRecipe.title}</strong>. 
+        Voulez-vous lui associer un accompagnement pour composer un repas complet ?
+      </p>
+
+      <div>
+        <label className="block text-[10px] font-extrabold text-slate-600 uppercase mb-1">
+          Accompagnements disponibles
+        </label>
+        <select
+          value={selectedSideRecipeId}
+          onChange={(e) => setSelectedSideRecipeId(e.target.value)}
+          className="w-full p-3 bg-[#FAF7F2] border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
+        >
+          <option value="">-- Aucun (Ajouter seul) --</option>
+          {recipes
+            .filter((r) => r.category === 'Accompagnements')
+            .map((side) => (
+              <option key={side.id} value={side.id}>
+                {side.title}
+              </option>
+            ))}
+        </select>
+      </div>
+
+      <div className="flex gap-2 pt-2">
+        <button
+          onClick={handleConfirmSideChoice}
+          className="flex-1 bg-[#3D6647] hover:bg-[#2f5037] text-white font-extrabold py-3 rounded-2xl text-xs transition"
+        >
+          Valider le repas
+        </button>
+        <button
+          onClick={() => {
+            setShowSideModal(false);
+            setPendingMainRecipe(null);
+          }}
+          className="bg-slate-100 text-slate-600 font-extrabold py-3 px-4 rounded-2xl text-xs hover:bg-slate-200 transition"
+        >
+          Annuler
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
        {/* VUE HOME (FOYER PARTICIPATIF) */}
 {profileView === 'home' && user && (
