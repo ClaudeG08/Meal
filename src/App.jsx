@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import AuthModal from './components/AuthModal';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const PEXELS_API_KEY = process.env.REACT_APP_PEXELS_API_KEY || 'XSzr1kGcMyAW5qhPBzp9RQwilhRk52anVz7Kvu1gyWKiYeqUY9u1YRa4';
 const RECIPE_IMAGES_BUCKET = 'recipe-images';
@@ -474,62 +474,67 @@ const handleLeaveHome = async () => {
   // --- COURSES ---
 // --- EXPORT PDF DE LA LISTE DE COURSES ---
 const exportShoppingListToPDF = () => {
-  if (shoppingList.length === 0) {
-    alert("Votre liste de courses est vide !");
-    return;
+  try {
+    if (shoppingList.length === 0) {
+      alert("Votre liste de courses est vide !");
+      return;
+    }
+
+    const doc = new jsPDF();
+
+    // En-tête
+    doc.setFontSize(18);
+    doc.setTextColor(44, 74, 52); // Couleur #2C4A34
+    doc.text("Gil'Meal - Liste de courses", 14, 20);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    const dateStr = new Date().toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+    doc.text(`Généré le ${dateStr}${userHome ? ` • Foyer : ${userHome.name}` : ''}`, 14, 27);
+
+    // Préparation des données de la table
+    const tableRows = shoppingList.map((item, index) => [
+      index + 1,
+      item.checked ? '[X]' : '[ ]',
+      item.name.charAt(0).toUpperCase() + item.name.slice(1),
+      item.quantity ? `${item.quantity} ${item.unit || ''}`.trim() : '-',
+    ]);
+
+    // Génération de la table via la fonction autoTable
+    autoTable(doc, {
+      startY: 32,
+      head: [['#', 'Statut', 'Article', 'Quantité']],
+      body: tableRows,
+      headStyles: {
+        fillColor: [61, 102, 71], // Couleur #3D6647
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: {
+        fillColor: [250, 247, 242], // Couleur #FAF7F2
+      },
+      styles: {
+        fontSize: 10,
+        cellPadding: 3,
+      },
+      columnStyles: {
+        0: { cellWidth: 12, halign: 'center' },
+        1: { cellWidth: 18, halign: 'center' },
+        2: { cellWidth: 'auto' },
+        3: { cellWidth: 35, halign: 'right' },
+      },
+    });
+
+    // Sauvegarde du fichier
+    doc.save(`liste-de-courses-${new Date().toISOString().split('T')[0]}.pdf`);
+  } catch (error) {
+    console.error("Erreur lors de la génération du PDF :", error);
+    alert("Une erreur est survenue lors de l'exportation du PDF.");
   }
-
-  const doc = new jsPDF();
-
-  // En-tête
-  doc.setFontSize(18);
-  doc.setTextColor(44, 74, 52); // Couleur #2C4A34
-  doc.text("Gil'Meal - Liste de courses", 14, 20);
-
-  doc.setFontSize(10);
-  doc.setTextColor(100);
-  const dateStr = new Date().toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
-  doc.text(`Généré le ${dateStr}${userHome ? ` • Foyer : ${userHome.name}` : ''}`, 14, 27);
-
-  // Préparation des données de la table
-  const tableRows = shoppingList.map((item, index) => [
-    index + 1,
-    item.checked ? '[X]' : '[ ]',
-    item.name.charAt(0).toUpperCase() + item.name.slice(1),
-    item.quantity ? `${item.quantity} ${item.unit || ''}`.trim() : '-',
-  ]);
-
-  // Génération de la table
-  doc.autoTable({
-    startY: 32,
-    head: [['#', 'Statut', 'Article', 'Quantité']],
-    body: tableRows,
-    headStyles: {
-      fillColor: [61, 102, 71], // Couleur #3D6647
-      textColor: 255,
-      fontStyle: 'bold',
-    },
-    alternateRowStyles: {
-      fillColor: [250, 247, 242], // Couleur #FAF7F2
-    },
-    styles: {
-      fontSize: 10,
-      cellPadding: 3,
-    },
-    columnStyles: {
-      0: { cellWidth: 12, halign: 'center' },
-      1: { cellWidth: 18, halign: 'center' },
-      2: { cellWidth: 'auto' },
-      3: { cellWidth: 35, halign: 'right' },
-    },
-  });
-
-  // Sauvegarde du fichier
-  doc.save(`liste-de-courses-${new Date().toISOString().split('T')[0]}.pdf`);
 };
   const generateShoppingListFromPlanning = async () => {
     const totals = {};
