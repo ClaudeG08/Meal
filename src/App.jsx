@@ -245,73 +245,102 @@ export default function App() {
     }
   };
 
-  // --- CRÉER UN HOME ---
-  const handleCreateHome = async () => {
-    if (!newHomeName.trim()) {
-      alert("Veuillez saisir un nom pour votre foyer.");
-      return;
-    }
-    if (!user) return;
+ // --- CRÉATION DE FOYER ---
+const handleCreateHome = async () => {
+  // VERIFICATION : Un seul foyer à la fois
+  if (userHome) {
+    alert("Vous appartenez déjà à un foyer. Veuillez le quitter avant d'en créer un nouveau.");
+    return;
+  }
+  if (!newHomeName.trim()) {
+    alert("Veuillez saisir un nom pour votre foyer.");
+    return;
+  }
+  if (!user) return;
 
-    const generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    const { data: home, error: homeError } = await supabase
-      .from('homes')
-      .insert([{ name: newHomeName.trim(), invite_code: generatedCode }])
-      .select()
-      .single();
+  const { data: home, error: homeError } = await supabase
+    .from('homes')
+    .insert([{ name: newHomeName.trim(), invite_code: generatedCode }])
+    .select()
+    .single();
 
-    if (homeError) {
-      alert(`Erreur lors de la création : ${homeError.message}`);
-      return;
-    }
+  if (homeError) {
+    alert(`Erreur de création : ${homeError.message}`);
+    return;
+  }
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({ id: user.id, home_id: home.id });
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .upsert({ id: user.id, home_id: home.id });
 
-    if (profileError) {
-      alert(`Erreur lors de la mise à jour de votre profil : ${profileError.message}`);
-      return;
-    }
+  if (profileError) {
+    alert(`Erreur d'association du foyer : ${profileError.message}`);
+    return;
+  }
 
-    setUserHome(home);
-    setNewHomeName('');
-    alert(`Foyer "${home.name}" créé avec succès ! Code de partage : ${home.invite_code}`);
-  };
+  setUserHome(home);
+  setNewHomeName('');
+  alert(`Foyer "${home.name}" créé avec succès ! Code : ${home.invite_code}`);
+};
 
-  // --- REJOINDRE UN HOME ---
-  const handleJoinHome = async () => {
-    if (!homeCode.trim()) {
-      alert("Veuillez saisir un code de foyer.");
-      return;
-    }
-    if (!user) return;
+// --- REJOINDRre UN FOYER ---
+const handleJoinHome = async () => {
+  // VERIFICATION : Un seul foyer à la fois
+  if (userHome) {
+    alert("Vous appartenez déjà à un foyer. Veuillez le quitter avant d'en rejoindre un autre.");
+    return;
+  }
+  if (!homeCode.trim()) {
+    alert("Veuillez saisir un code de foyer.");
+    return;
+  }
+  if (!user) return;
 
-    const { data: home, error: homeError } = await supabase
-      .from('homes')
-      .select('*')
-      .eq('invite_code', homeCode.trim().toUpperCase())
-      .single();
+  const { data: home, error: homeError } = await supabase
+    .from('homes')
+    .select('*')
+    .eq('invite_code', homeCode.trim().toUpperCase())
+    .single();
 
-    if (homeError || !home) {
-      alert("Code de foyer invalide ou introuvable.");
-      return;
-    }
+  if (homeError || !home) {
+    alert("Code de foyer invalide ou introuvable.");
+    return;
+  }
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({ id: user.id, home_id: home.id });
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .upsert({ id: user.id, home_id: home.id });
 
-    if (profileError) {
-      alert(`Erreur lors du rattachement au foyer : ${profileError.message}`);
-      return;
-    }
+  if (profileError) {
+    alert(`Erreur d'association au foyer : ${profileError.message}`);
+    return;
+  }
 
-    setUserHome(home);
-    setHomeCode('');
-    alert(`Vous avez rejoint le foyer "${home.name}" !`);
-  };
+  setUserHome(home);
+  setHomeCode('');
+  alert(`Vous avez rejoint le foyer "${home.name}" !`);
+};
+
+// --- QUITTER LE FOYER ---
+const handleLeaveHome = async () => {
+  if (!window.confirm("Voulez-vous vraiment quitter votre foyer actuel ?")) return;
+  if (!user) return;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ home_id: null })
+    .eq('id', user.id);
+
+  if (error) {
+    alert(`Erreur lors du départ du foyer : ${error.message}`);
+    return;
+  }
+
+  setUserHome(null);
+  alert("Vous avez quitté le foyer.");
+};
 
   // --- RÉCUPÉRATION & SYNCHRONISATION EN TEMPS RÉEL ---
   useEffect(() => {
