@@ -104,6 +104,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [isGuest, setIsGuest] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalView, setAuthModalView] = useState('welcome');
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileView, setProfileView] = useState('recipes'); // 'recipes', 'profile', 'home'
   const menuRef = useRef(null);
@@ -128,6 +129,7 @@ export default function App() {
     e.stopPropagation();
     if (isGuest || !user) {
       alert("Veuillez vous connecter pour gérer vos favoris.");
+      setAuthModalView('welcome');
       setShowAuthModal(true);
       return;
     }
@@ -205,10 +207,16 @@ export default function App() {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         setIsGuest(false);
+      }
+
+      // Détecter le retour après clic sur le lien de réinitialisation dans l'email
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthModalView('reset_password');
+        setShowAuthModal(true);
       }
     });
 
@@ -290,6 +298,7 @@ export default function App() {
     setProfileView('recipes');
     await supabase.auth.signOut();
     setIsGuest(false);
+    setAuthModalView('welcome');
     setShowAuthModal(true);
   };
 
@@ -425,6 +434,7 @@ export default function App() {
   const openCreateForm = () => {
     if (isGuest || !user) {
       alert("En mode invité, vous ne pouvez pas créer de recette. Veuillez vous connecter.");
+      setAuthModalView('welcome');
       setShowAuthModal(true);
       return;
     }
@@ -599,6 +609,7 @@ export default function App() {
   const handleTabChange = (tab) => {
     if ((isGuest || !user) && (tab === 'planning' || tab === 'shopping' || (tab === 'recipes' && showFavoritesOnly))) {
       alert("Cet onglet est verrouillé. Veuillez vous connecter pour y accéder.");
+      setAuthModalView('welcome');
       setShowAuthModal(true);
       return;
     }
@@ -613,6 +624,7 @@ export default function App() {
   const addRecipeToPlanning = async (recipe) => {
     if (isGuest || !user) {
       alert("Veuillez vous connecter pour ajouter des repas au panier/planning.");
+      setAuthModalView('welcome');
       setShowAuthModal(true);
       return;
     }
@@ -795,7 +807,10 @@ export default function App() {
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500 font-bold">Mode Invité</span>
               <button
-                onClick={() => setShowAuthModal(true)}
+                onClick={() => {
+                  setAuthModalView('welcome');
+                  setShowAuthModal(true);
+                }}
                 className="bg-[#3D6647] text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-[#2f5037] transition"
               >
                 Se connecter
@@ -1760,6 +1775,7 @@ export default function App() {
             onClick={() => {
               if (isGuest || !user) {
                 alert("L'accès aux favoris nécessite un compte. Veuillez vous connecter.");
+                setAuthModalView('welcome');
                 setShowAuthModal(true);
                 return;
               }
@@ -1842,6 +1858,7 @@ export default function App() {
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onGuestLogin={handleGuestLogin}
+        initialView={authModalView}
       />
     </div>
   );

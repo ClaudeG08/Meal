@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 
-export default function AuthModal({ isOpen, onClose, onGuestLogin }) {
-  const [view, setView] = useState('welcome'); // 'welcome' | 'login' | 'signup_step1' | 'signup_step2' | 'forgot'
+export default function AuthModal({ isOpen, onClose, onGuestLogin, initialView = 'welcome' }) {
+  // 'welcome' | 'login' | 'signup_step1' | 'signup_step2' | 'forgot' | 'reset_password'
+  const [view, setView] = useState(initialView);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -10,6 +11,11 @@ export default function AuthModal({ isOpen, onClose, onGuestLogin }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Mettre à jour la vue si initialView change (ex: redirection suite au lien e-mail)
+  React.useEffect(() => {
+    setView(initialView);
+  }, [initialView]);
 
   if (!isOpen) return null;
 
@@ -81,13 +87,42 @@ export default function AuthModal({ isOpen, onClose, onGuestLogin }) {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin, // Redirige vers l'URL actuelle de votre application
+    });
     setLoading(false);
 
     if (error) {
       setErrorMsg(error.message);
     } else {
       setSuccessMsg("Un e-mail de réinitialisation vous a été envoyé.");
+    }
+  };
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (password !== confirmPassword) {
+      setErrorMsg("Les mots de passe ne correspondent pas.");
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    const { error } = await supabase.auth.updateUser({ password });
+    setLoading(false);
+
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      setSuccessMsg("Mot de passe modifié avec succès ! Vous pouvez à présent continuer.");
+      setTimeout(() => {
+        resetForm();
+        onClose();
+      }, 2000);
     }
   };
 
@@ -242,7 +277,7 @@ export default function AuthModal({ isOpen, onClose, onGuestLogin }) {
           </form>
         )}
 
-        {/* VUE MOT DE PASSE OUBLIÉ */}
+        {/* VUE DEMANDE DE RÉINITIALISATION */}
         {view === 'forgot' && (
           <form onSubmit={handleForgotPassword} className="space-y-3">
             <h4 className="text-center font-extrabold text-sm text-[#EF6A45]">Réinitialisation</h4>
@@ -263,6 +298,39 @@ export default function AuthModal({ isOpen, onClose, onGuestLogin }) {
             </button>
             <button type="button" onClick={() => setView('login')} className="w-full text-center text-[10px] font-bold text-slate-400 hover:underline">
               ⬅ Retour connexion
+            </button>
+          </form>
+        )}
+
+        {/* VUE NOUVEAU MOT DE PASSE (APRS CLIC SUR LE LIEN EMAIL) */}
+        {view === 'reset_password' && (
+          <form onSubmit={handleUpdatePassword} className="space-y-3">
+            <h4 className="text-center font-extrabold text-sm text-[#EF6A45]">Nouveau mot de passe</h4>
+            <p className="text-[11px] text-[#3D6647] font-semibold text-center">
+              Saisissez votre nouveau mot de passe ci-dessous.
+            </p>
+            <input
+              type="password"
+              placeholder="Nouveau mot de passe"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-3 bg-[#FAF7F2] border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none"
+              required
+            />
+            <input
+              type="password"
+              placeholder="Confirmer le nouveau mot de passe"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full p-3 bg-[#FAF7F2] border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none"
+              required
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#3D6647] text-white py-3 rounded-2xl text-xs font-extrabold hover:bg-[#2C4A34] transition"
+            >
+              {loading ? 'Mise à jour...' : 'Valider le mot de passe'}
             </button>
           </form>
         )}
