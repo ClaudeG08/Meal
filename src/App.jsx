@@ -85,18 +85,32 @@ const uploadRecipeImage = async (file) => {
   return data.publicUrl;
 };
 
+// --- FIXATION REQUÊTE PEXELS ---
 const searchRecipeImages = async (query) => {
-  const response = await fetch(
-    `https://api.pexels.com/v1/search?query=${encodeURIComponent(query + ' recette plat')}&per_page=6`,
-    { headers: { Authorization: PEXELS_API_KEY } }
-  );
-  if (!response.ok) throw new Error('Erreur API Pexels');
-  const data = await response.json();
-  return (data.photos || []).map((p) => ({
-    id: p.id,
-    thumb: p.src.small,
-    full: p.src.large,
-  }));
+  try {
+    const response = await fetch(
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query + ' recette')}&per_page=6`,
+      {
+        headers: {
+          Authorization: PEXELS_API_KEY,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Erreur API Pexels (${response.status})`);
+    }
+
+    const data = await response.json();
+    return (data.photos || []).map((p) => ({
+      id: p.id,
+      thumb: p.src.small,
+      full: p.src.large,
+    }));
+  } catch (err) {
+    console.error("Détail erreur Pexels :", err);
+    throw err;
+  }
 };
 
 export default function App() {
@@ -110,7 +124,7 @@ export default function App() {
   const menuRef = useRef(null);
 
   // --- ÉTATS FOYER (HOME) ---
-  const [userHome, setUserHome] = useState(null); // Objet { id, name, code }
+  const [userHome, setUserHome] = useState(null);
   const [newHomeName, setNewHomeName] = useState('');
   const [homeCode, setHomeCode] = useState('');
 
@@ -299,7 +313,7 @@ export default function App() {
     alert(`Vous avez rejoint le foyer "${home.name}" !`);
   };
 
-  // --- RÉCUPÉRATION & SYNCHRONISATION EN TEMPS RÉEL (PARTAGÉ PAR HOME) ---
+  // --- RÉCUPÉRATION & SYNCHRONISATION EN TEMPS RÉEL ---
   useEffect(() => {
     fetchRecipes();
     fetchPlannedMeals();
@@ -592,8 +606,8 @@ export default function App() {
       setImageSearchResults(results);
     } catch (err) {
       console.error('Erreur lors de la recherche d\'image :', err);
-      setImageSearchError(`Échec de la recherche d'image : ${err.message}`);
-    } finally {
+      setImageSearchError(`Impossible de récupérer les images. Vérifiez votre clé API.`);
+    } font {
       setIsSearchingImages(false);
     }
   };
