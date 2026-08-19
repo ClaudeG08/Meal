@@ -3,6 +3,9 @@ import { supabase } from './supabaseClient';
 import AuthModal from './components/AuthModal';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
 const PEXELS_API_KEY = process.env.REACT_APP_PEXELS_API_KEY || 'XSzr1kGcMyAW5qhPBzp9RQwilhRk52anVz7Kvu1gyWKiYeqUY9u1YRa4';
 const RECIPE_IMAGES_BUCKET = 'recipe-images';
@@ -545,7 +548,30 @@ const exportShoppingListToPDF = () => {
     });
 
     // Sauvegarde du fichier
-    doc.save(`liste-de-courses-${new Date().toISOString().split('T')[0]}.pdf`);
+   
+const fileName = `liste-de-courses-${new Date().toISOString().slice(0, 10)}.pdf`;
+
+if (Capacitor.isNativePlatform()) {
+  // --- CODE POUR ANDROID / IOS ---
+  const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+  // 1. Sauvegarde du fichier dans le dossier de l'application
+  const savedFile = await Filesystem.writeFile({
+    path: fileName,
+    data: pdfBase64,
+    directory: Directory.Cache
+  });
+
+  // 2. Ouverture de la fenêtre de partage native d'Android
+  await Share.share({
+    title: 'Liste de courses',
+    url: savedFile.uri,
+    dialogTitle: 'Partager ou enregistrer le PDF'
+  });
+} else {
+  // --- CODE POUR NAVIGATEUR WEB ---
+  doc.save(fileName);
+}
 alert("La liste de courses a été téléchargée avec succès !");
 
   } catch (error) {
