@@ -607,7 +607,7 @@ export default function App() {
     } catch (err) {
       console.error('Erreur lors de la recherche d\'image :', err);
       setImageSearchError(`Impossible de récupérer les images. Vérifiez votre clé API.`);
-    } font {
+    } finally {
       setIsSearchingImages(false);
     }
   };
