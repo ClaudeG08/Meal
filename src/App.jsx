@@ -109,6 +109,11 @@ export default function App() {
   const [profileView, setProfileView] = useState('recipes'); // 'recipes', 'profile', 'home'
   const menuRef = useRef(null);
 
+  // --- ÉTATS FOYER (HOME) ---
+  const [userHome, setUserHome] = useState(null); // Objet { id, name, code }
+  const [newHomeName, setNewHomeName] = useState('');
+  const [homeCode, setHomeCode] = useState('');
+
   // --- ÉTATS DE NAVIGATION ---
   const [activeTab, setActiveTab] = useState('recipes');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
@@ -121,33 +126,8 @@ export default function App() {
   const [activeRecipe, setActiveRecipe] = useState(null);
   const [recipeDetailTab, setRecipeDetailTab] = useState('ingredients');
 
-  // --- ÉTATS PROFIL / HOME ---
+  // --- ÉTATS PROFIL ---
   const [newPassword, setNewPassword] = useState('');
-  const [homeCode, setHomeCode] = useState('');
-
-  const toggleFavorite = async (recipeId, currentStatus, e) => {
-    e.stopPropagation();
-    if (isGuest || !user) {
-      alert("Veuillez vous connecter pour gérer vos favoris.");
-      setAuthModalView('welcome');
-      setShowAuthModal(true);
-      return;
-    }
-    const newStatus = !currentStatus;
-
-    setRecipes((prev) =>
-      prev.map((r) => (r.id === recipeId ? { ...r, is_favorite: newStatus } : r))
-    );
-
-    const { error } = await supabase
-      .from('recipes')
-      .update({ is_favorite: newStatus })
-      .eq('id', recipeId);
-
-    if (error) {
-      console.error("Erreur lors de la mise à jour du favori :", error);
-    }
-  };
 
   // --- ÉTATS CRÉATION / ÉDITION ---
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -198,12 +178,14 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // --- AUTHENTIFICATION ---
+  // --- AUTHENTIFICATION & CHARGEMENT INITIAL ---
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (!session?.user) {
         setShowAuthModal(true);
+      } else {
+        fetchUserHome(session.user.id);
       }
     });
 
@@ -211,9 +193,11 @@ export default function App() {
       setUser(session?.user ?? null);
       if (session?.user) {
         setIsGuest(false);
+        fetchUserHome(session.user.id);
+      } else {
+        setUserHome(null);
       }
 
-      // Détecter le retour après clic sur le lien de réinitialisation dans l'email
       if (event === 'PASSWORD_RECOVERY') {
         setAuthModalView('reset_password');
         setShowAuthModal(true);
@@ -223,7 +207,99 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // --- RÉCUPÉRATION & SYNCHRONISATION ---
+  // --- RÉCUPÉRATION DU HOME DE L'UTILISATEUR ---
+  const fetchUserHome = async (userId) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('home_id, homes(*)')
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error("Erreur chargement profil/home :", error);
+        return;
+      }
+
+      if (profile?.homes) {
+        setUserHome(profile.homes);
+      } else {
+        setUserHome(null);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // --- CRÉER UN HOME ---
+  const handleCreateHome = async () => {
+    if (!newHomeName.trim()) {
+      alert("Veuillez saisir un nom pour votre foyer.");
+      return;
+    }
+    if (!user) return;
+
+    const generatedCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    const { data: home, error: homeError } = await supabase
+      .from('homes')
+      .insert([{ name: newHomeName.trim(), code: generatedCode }])
+      .select()
+      .single();
+
+    if (homeError) {
+      alert(`Erreur lors de la création : ${homeError.message}`);
+      return;
+    }
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({ id: user.id, home_id: home.id });
+
+    if (profileError) {
+      alert(`Erreur lors de la mise à jour de votre profil : ${profileError.message}`);
+      return;
+    }
+
+    setUserHome(home);
+    setNewHomeName('');
+    alert(`Foyer "${home.name}" créé avec succès ! Code de partage : ${home.code}`);
+  };
+
+  // --- REJOINDRE UN HOME ---
+  const handleJoinHome = async () => {
+    if (!homeCode.trim()) {
+      alert("Veuillez saisir un code de foyer.");
+      return;
+    }
+    if (!user) return;
+
+    const { data: home, error: homeError } = await supabase
+      .from('homes')
+      .select('*')
+      .eq('code', homeCode.trim().toUpperCase())
+      .single();
+
+    if (homeError || !home) {
+      alert("Code de foyer invalide ou introuvable.");
+      return;
+    }
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({ id: user.id, home_id: home.id });
+
+    if (profileError) {
+      alert(`Erreur lors du rattachement au foyer : ${profileError.message}`);
+      return;
+    }
+
+    setUserHome(home);
+    setHomeCode('');
+    alert(`Vous avez rejoint le foyer "${home.name}" !`);
+  };
+
+  // --- RÉCUPÉRATION & SYNCHRONISATION EN TEMPS RÉEL (PARTAGÉ PAR HOME) ---
   useEffect(() => {
     fetchRecipes();
     fetchPlannedMeals();
@@ -247,7 +323,7 @@ export default function App() {
       supabase.removeChannel(mealsChannel);
       supabase.removeChannel(shoppingChannel);
     };
-  }, [user]);
+  }, [user, userHome]);
 
   const fetchRecipes = async () => {
     const { data } = await supabase.from('recipes').select('*').order('id', { ascending: false });
@@ -255,7 +331,18 @@ export default function App() {
   };
 
   const fetchPlannedMeals = async () => {
-    const { data, error } = await supabase.from('planned_meals').select('*');
+    let query = supabase.from('planned_meals').select('*');
+    if (userHome) {
+      query = query.eq('home_id', userHome.id);
+    } else if (user) {
+      query = query.eq('user_id', user.id);
+    } else {
+      setPlannedMeals([]);
+      setAgenda({});
+      return;
+    }
+
+    const { data, error } = await query;
     if (error) {
       console.error('Erreur chargement repas planifiés :', error);
       return;
@@ -285,7 +372,17 @@ export default function App() {
   };
 
   const fetchShoppingList = async () => {
-    const { data, error } = await supabase.from('shopping_list').select('*').order('id', { ascending: true });
+    let query = supabase.from('shopping_list').select('*').order('id', { ascending: true });
+    if (userHome) {
+      query = query.eq('home_id', userHome.id);
+    } else if (user) {
+      query = query.eq('user_id', user.id);
+    } else {
+      setShoppingList([]);
+      return;
+    }
+
+    const { data, error } = await query;
     if (error) {
       console.error('Erreur chargement liste de courses :', error);
       return;
@@ -298,6 +395,7 @@ export default function App() {
     setProfileView('recipes');
     await supabase.auth.signOut();
     setIsGuest(false);
+    setUserHome(null);
     setAuthModalView('welcome');
     setShowAuthModal(true);
   };
@@ -346,6 +444,8 @@ export default function App() {
             quantity: qty,
             unit: unit,
             checked: false,
+            home_id: userHome?.id || null,
+            user_id: user?.id || null,
           };
         }
       });
@@ -353,7 +453,12 @@ export default function App() {
 
     const newItems = Object.values(totals);
 
-    await supabase.from('shopping_list').delete().gt('id', 0);
+    if (userHome) {
+      await supabase.from('shopping_list').delete().eq('home_id', userHome.id);
+    } else {
+      await supabase.from('shopping_list').delete().eq('user_id', user.id);
+    }
+
     if (newItems.length > 0) {
       const { error } = await supabase.from('shopping_list').insert(newItems);
       if (error) console.error("Erreur réinitialisation courses :", error);
@@ -370,6 +475,8 @@ export default function App() {
       quantity: Number(newIngredientQty) || 0,
       unit: newIngredientUnit,
       checked: false,
+      home_id: userHome?.id || null,
+      user_id: user?.id || null,
     };
 
     const { error } = await supabase.from('shopping_list').insert([newItem]);
@@ -590,6 +697,30 @@ export default function App() {
     }
   };
 
+  const toggleFavorite = async (recipeId, currentStatus, e) => {
+    e.stopPropagation();
+    if (isGuest || !user) {
+      alert("Veuillez vous connecter pour gérer vos favoris.");
+      setAuthModalView('welcome');
+      setShowAuthModal(true);
+      return;
+    }
+    const newStatus = !currentStatus;
+
+    setRecipes((prev) =>
+      prev.map((r) => (r.id === recipeId ? { ...r, is_favorite: newStatus } : r))
+    );
+
+    const { error } = await supabase
+      .from('recipes')
+      .update({ is_favorite: newStatus })
+      .eq('id', recipeId);
+
+    if (error) {
+      console.error("Erreur lors de la mise à jour du favori :", error);
+    }
+  };
+
   // --- FILTRAGE DE RECETTES ---
   const filteredRecipes = recipes.filter((r) => {
     const matchMain = (r.category || 'Plats') === selectedMainCat;
@@ -637,6 +768,8 @@ export default function App() {
       ingredients: recipe.ingredients || [],
       assigned_day: null,
       assigned_slot: null,
+      home_id: userHome?.id || null,
+      user_id: user?.id || null,
     };
 
     const { error } = await supabase.from('planned_meals').insert([payload]);
@@ -646,7 +779,6 @@ export default function App() {
     }
 
     fetchPlannedMeals();
-    alert(`"${recipe.title}" (${selectedGuests} pers.) ajouté au panier !`);
   };
 
   const removePlannedMeal = async (id) => {
@@ -698,7 +830,11 @@ export default function App() {
       return;
     }
 
-    await supabase.from('planned_meals').delete().gt('id', 0);
+    if (userHome) {
+      await supabase.from('planned_meals').delete().eq('home_id', userHome.id);
+    } else {
+      await supabase.from('planned_meals').delete().eq('user_id', user.id);
+    }
 
     const newPlannedMeals = [];
     days.forEach((day) => {
@@ -712,6 +848,8 @@ export default function App() {
           ingredients: randomRecipe.ingredients || [],
           assigned_day: day.id,
           assigned_slot: slot,
+          home_id: userHome?.id || null,
+          user_id: user?.id || null,
         });
       });
     });
@@ -770,6 +908,11 @@ export default function App() {
                     <p className="text-xs font-bold text-slate-700 truncate">
                       {user.user_metadata?.username || user.email}
                     </p>
+                    {userHome && (
+                      <p className="text-[10px] text-[#3D6647] font-extrabold truncate mt-0.5">
+                        🏠 {userHome.name}
+                      </p>
+                    )}
                   </div>
 
                   <button
@@ -890,17 +1033,53 @@ export default function App() {
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 leading-relaxed font-medium">
-              Créez ou rejoignez un foyer commun pour partager le planning des repas et la liste de courses avec vos proches.
-            </p>
+            {userHome ? (
+              <div className="bg-[#E8F3EB] p-5 rounded-2xl border border-[#3D6647]/30 space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-extrabold text-[#2C4A34]">Votre Foyer Actif</h3>
+                  <span className="bg-[#3D6647] text-white text-[10px] font-bold px-2.5 py-1 rounded-full">
+                    Actif
+                  </span>
+                </div>
+                <p className="text-lg font-black text-slate-800">{userHome.name}</p>
+                <div className="bg-white/80 p-3 rounded-xl border border-[#3D6647]/20 flex justify-between items-center">
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase">Code d'invitation</p>
+                    <p className="text-base font-black text-[#2C4A34] tracking-widest">{userHome.code}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(userHome.code);
+                      alert("Code copié dans le presse-papier !");
+                    }}
+                    className="text-xs bg-[#3D6647] text-white font-bold px-3 py-1.5 rounded-lg hover:bg-[#2C4A34]"
+                  >
+                    Copier
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-600 font-medium">
+                  Partagez ce code avec les membres de votre famille pour synchroniser vos listes.
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                Vous n'appartenez à aucun foyer pour le moment. Créez-en un ou rejoignez-en un grâce à un code.
+              </p>
+            )}
 
             <div className="space-y-4">
-              <div className="bg-[#E8F3EB] p-4 rounded-2xl border border-[#3D6647]/20 space-y-2">
-                <h3 className="text-xs font-extrabold text-[#2C4A34] uppercase">Créer un nouveau foyer</h3>
-                <p className="text-[11px] text-slate-600">Générez un groupe familial/colocation pour partager vos repas.</p>
+              <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-slate-200 space-y-3">
+                <h3 className="text-xs font-extrabold text-slate-700 uppercase">Créer un nouveau foyer</h3>
+                <input
+                  type="text"
+                  placeholder="Nom du foyer (ex: Maison, Coloc...)"
+                  value={newHomeName}
+                  onChange={(e) => setNewHomeName(e.target.value)}
+                  className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
+                />
                 <button
-                  onClick={() => alert("Fonctionnalité de création de foyer bientôt disponible.")}
-                  className="bg-[#2C4A34] text-white font-extrabold px-4 py-2 rounded-xl text-xs hover:bg-[#1f3525] transition"
+                  onClick={handleCreateHome}
+                  className="w-full bg-[#2C4A34] text-white font-extrabold py-3 rounded-2xl text-xs hover:bg-[#1f3525] transition"
                 >
                   + Créer mon Home
                 </button>
@@ -916,9 +1095,7 @@ export default function App() {
                   className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
                 />
                 <button
-                  onClick={() => {
-                    if (homeCode) alert(`Demande de raccordement au foyer : ${homeCode}`);
-                  }}
+                  onClick={handleJoinHome}
                   className="w-full bg-[#EF6A45] hover:bg-[#d95a37] text-white font-extrabold py-3 rounded-2xl text-xs transition"
                 >
                   Rejoindre
