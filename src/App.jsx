@@ -119,6 +119,11 @@ export default function App() {
 
   const toggleFavorite = async (recipeId, currentStatus, e) => {
     e.stopPropagation();
+    if (isGuest || !user) {
+      alert("Veuillez vous connecter pour gérer vos favoris.");
+      setShowAuthModal(true);
+      return;
+    }
     const newStatus = !currentStatus;
 
     setRecipes((prev) =>
@@ -218,6 +223,11 @@ export default function App() {
 
   const handleGuestLogin = () => {
     setIsGuest(true);
+    setShowAuthModal(false);
+    // Si l'invité était sur un autre onglet, redirection vers recettes
+    if (activeTab !== 'recipes') {
+      setActiveTab('recipes');
+    }
   };
 
   useEffect(() => {
@@ -312,7 +322,7 @@ export default function App() {
   const updateShoppingItem = (id, field, value) => {
     setShoppingList(
       shoppingList.map((item) =>
-        item.id === id ? { ...item, [field]: value } : item
+        item.id === item.id ? { ...item, [field]: value } : item
       )
     );
   };
@@ -354,6 +364,11 @@ export default function App() {
 
   // --- FORMULAIRE RECETTE ---
   const openCreateForm = () => {
+    if (isGuest || !user) {
+      alert("En mode invité, vous ne pouvez pas créer de recette. Veuillez vous connecter.");
+      setShowAuthModal(true);
+      return;
+    }
     setEditingId(null);
     setFormTitle('');
     setFormCategory('Plats');
@@ -413,6 +428,11 @@ export default function App() {
   };
 
   const openEditForm = (recipe) => {
+    const creatorId = recipe.created_by || recipe.user_id;
+    if (isGuest || !user || user.id !== creatorId) {
+      alert("Seul le créateur de la recette peut la modifier.");
+      return;
+    }
     setEditingId(recipe.id);
     setFormTitle(recipe.title);
     setFormCategory(recipe.category || 'Plats');
@@ -450,6 +470,9 @@ export default function App() {
 
     const filteredIngs = formIngredients.filter((ing) => ing.name.trim() !== '');
 
+    // Extraction d'un nom/identifiant d'utilisateur lisible
+    const userDisplayName = user?.user_metadata?.username || user?.email?.split('@')[0] || user?.id || 'Inconnu';
+
     const recipeData = {
       title: formTitle,
       category: formCategory,
@@ -458,6 +481,8 @@ export default function App() {
       ingredients: filteredIngs,
       instructions: formInstructions,
       image_url: formImageUrl.trim() ? formImageUrl.trim() : null,
+      created_by: user?.id,
+      creator_name: userDisplayName,
     };
 
     if (editingId) {
@@ -484,26 +509,55 @@ export default function App() {
     setIsFormOpen(false);
   };
 
-  const deleteRecipe = async (id) => {
+  const deleteRecipe = async (recipe) => {
+    const creatorId = recipe.created_by || recipe.user_id;
+    if (isGuest || !user || user.id !== creatorId) {
+      alert("Seul le créateur de la recette peut la supprimer.");
+      return;
+    }
     if (!window.confirm('Voulez-vous vraiment supprimer cette recette ?')) return;
-    const { error } = await supabase.from('recipes').delete().eq('id', id);
+    const { error } = await supabase.from('recipes').delete().eq('id', recipe.id);
     if (!error) {
-      setRecipes(recipes.filter((r) => r.id !== id));
+      setRecipes(recipes.filter((r) => r.id !== recipe.id));
       setActiveRecipe(null);
     }
   };
 
-  // --- FILTRAGE ---
+  // --- FILTRAGE DES RECETTES (PAR TITRE, CATÉGORIES OU UTILISATEUR) ---
   const filteredRecipes = recipes.filter((r) => {
     const matchMain = (r.category || 'Plats') === selectedMainCat;
     const matchSub = selectedSubCat === 'Tous' || r.subCategory === selectedSubCat;
-    const matchSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Recherche par Titre OU par Identifiant du Créateur
+    const query = searchQuery.toLowerCase();
+    const matchTitle = r.title.toLowerCase().includes(query);
+    const matchCreator = (r.creator_name || '').toLowerCase().includes(query) || (r.created_by || '').toLowerCase().includes(query);
+    const matchSearch = matchTitle || matchCreator;
+
     const matchesFavorite = showFavoritesOnly ? r.is_favorite : true;
     return matchMain && matchSub && matchSearch && matchesFavorite;
   });
 
+  // --- RESTRICTION DES ONGLETS COMPTES PROTÉGÉS ---
+  const handleTabChange = (tab) => {
+    if ((isGuest || !user) && (tab === 'planning' || tab === 'shopping' || (tab === 'recipes' && showFavoritesOnly))) {
+      alert("Cet onglet est verrouillé. Veuillez vous connecter pour y accéder.");
+      setShowAuthModal(true);
+      return;
+    }
+    if (tab === 'recipes') {
+      setShowFavoritesOnly(false);
+    }
+    setActiveTab(tab);
+  };
+
   // --- PLANNING & COURSES ---
   const addRecipeToPlanning = (recipe) => {
+    if (isGuest || !user) {
+      alert("Veuillez vous connecter pour ajouter des repas au panier/planning.");
+      setShowAuthModal(true);
+      return;
+    }
     const newItem = {
       id: Date.now(),
       recipeId: recipe.id,
@@ -598,7 +652,7 @@ export default function App() {
       <header className="bg-white/80 backdrop-blur-md rounded-b-[32px] px-6 py-4 shadow-sm flex justify-between items-center max-w-2xl mx-auto w-full sticky top-0 z-30">
         <div
           className="flex items-center gap-2 cursor-pointer"
-          onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); }}
+          onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); setShowFavoritesOnly(false); }}
         >
           <img
             src="/logo.png"
@@ -614,7 +668,7 @@ export default function App() {
         <div className="flex items-center gap-3">
           {user ? (
             <div className="flex items-center gap-2 text-xs font-semibold">
-              <span className="hidden sm:inline text-slate-600">👤 {user.email}</span>
+              <span className="hidden sm:inline text-slate-600">👤 {user.user_metadata?.username || user.email}</span>
               <button
                 onClick={handleLogout}
                 className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition"
@@ -731,18 +785,22 @@ export default function App() {
                 <span className="text-slate-400">🔍</span>
                 <input
                   type="text"
-                  placeholder="Qu'est-ce qu'on mange aujourd'hui ?"
+                  placeholder="Rechercher un plat ou un créateur..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full text-xs font-semibold focus:outline-none bg-transparent placeholder:text-slate-400"
                 />
               </div>
-              <button
-                onClick={openCreateForm}
-                className="bg-[#EF6A45] hover:bg-[#d95a37] active:scale-95 text-white px-4 py-3 rounded-2xl shadow-sm text-xs font-bold flex items-center gap-1.5 shrink-0 transition"
-              >
-                <span className="text-base leading-none">+</span> Ajouter
-              </button>
+
+              {/* Bouton Ajouter uniquement accessible aux utilisateurs connectés */}
+              {!isGuest && user && (
+                <button
+                  onClick={openCreateForm}
+                  className="bg-[#EF6A45] hover:bg-[#d95a37] active:scale-95 text-white px-4 py-3 rounded-2xl shadow-sm text-xs font-bold flex items-center gap-1.5 shrink-0 transition"
+                >
+                  <span className="text-base leading-none">+</span> Ajouter
+                </button>
+              )}
             </div>
 
             {/* LISTE DES RECETTES */}
@@ -775,29 +833,39 @@ export default function App() {
                           {r.subCategory || r.category}
                         </span>
                         <span>•</span>
-                        <span>👥 : {r.servings || 4} pers.</span>
+                        <span>👥 {r.servings || 4} p.</span>
+                        {r.creator_name && (
+                          <>
+                            <span>•</span>
+                            <span className="text-[#3D6647] font-semibold text-[10px]">
+                              Par @{r.creator_name}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={(e) => toggleFavorite(r.id, r.is_favorite, e)}
-                        className="w-8 h-8 rounded-full bg-white/80 border border-slate-100 flex items-center justify-center shadow-sm text-red-500 hover:scale-110 active:scale-95 transition"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill={r.is_favorite ? 'currentColor' : 'none'}
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          viewBox="0 0 24 24"
+                      {!isGuest && (
+                        <button
+                          onClick={(e) => toggleFavorite(r.id, r.is_favorite, e)}
+                          className="w-8 h-8 rounded-full bg-white/80 border border-slate-100 flex items-center justify-center shadow-sm text-red-500 hover:scale-110 active:scale-95 transition"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-                          />
-                        </svg>
-                      </button>
+                          <svg
+                            className="w-5 h-5"
+                            fill={r.is_favorite ? 'currentColor' : 'none'}
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                            />
+                          </svg>
+                        </button>
+                      )}
                       <span className="w-8 h-8 rounded-full bg-[#E8F3EB] text-[#3D6647] flex items-center justify-center font-bold text-sm shrink-0">
                         ➔
                       </span>
@@ -819,20 +887,24 @@ export default function App() {
               >
                 ⬅ Retour aux recettes
               </button>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => openEditForm(activeRecipe)}
-                  className="text-xs text-[#3D6647] font-bold hover:underline"
-                >
-                  ✏️ Modifier
-                </button>
-                <button
-                  onClick={() => deleteRecipe(activeRecipe.id)}
-                  className="text-xs text-[#EF6A45] font-bold hover:underline"
-                >
-                  🗑️ Supprimer
-                </button>
-              </div>
+
+              {/* Boutons Modifier/Supprimer uniquement pour le créateur connecté */}
+              {user && (activeRecipe.created_by === user.id || activeRecipe.user_id === user.id) && (
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => openEditForm(activeRecipe)}
+                    className="text-xs text-[#3D6647] font-bold hover:underline"
+                  >
+                    ✏️ Modifier
+                  </button>
+                  <button
+                    onClick={() => deleteRecipe(activeRecipe)}
+                    className="text-xs text-[#EF6A45] font-bold hover:underline"
+                  >
+                    🗑️ Supprimer
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="w-full h-52 rounded-2xl overflow-hidden bg-slate-100 border border-slate-100 shadow-sm flex items-center justify-center">
@@ -851,9 +923,17 @@ export default function App() {
                 ★ {activeRecipe.category}
               </span>
               <h2 className="text-2xl font-black text-slate-800">{activeRecipe.title}</h2>
-              <p className="text-xs text-slate-400 mt-1 font-medium">
-                Recette créée pour <strong className="text-slate-700">{activeRecipe.servings || 4} pers.</strong>
-              </p>
+              
+              <div className="flex items-center justify-between mt-1">
+                <p className="text-xs text-slate-400 font-medium">
+                  Recette créée pour <strong className="text-slate-700">{activeRecipe.servings || 4} pers.</strong>
+                </p>
+                {activeRecipe.creator_name && (
+                  <p className="text-xs text-[#3D6647] font-bold">
+                    Créée par @{activeRecipe.creator_name}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* SELECTION NOMBRE DE PERSONNES */}
@@ -880,12 +960,14 @@ export default function App() {
                   </button>
                 </div>
 
-                <button
-                  onClick={() => addRecipeToPlanning(activeRecipe)}
-                  className="bg-[#EF6A45] hover:bg-[#d95a37] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition"
-                >
-                  + Ajouter au panier
-                </button>
+                {!isGuest && (
+                  <button
+                    onClick={() => addRecipeToPlanning(activeRecipe)}
+                    className="bg-[#EF6A45] hover:bg-[#d95a37] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition"
+                  >
+                    + Ajouter au panier
+                  </button>
+                )}
               </div>
             </div>
 
@@ -938,7 +1020,7 @@ export default function App() {
           </div>
         )}
 
-        {/* MODALE FORMULAIRE */}
+        {/* MODALE FORMULAIRE DE CRÉATION / MODIFICATION */}
         {isFormOpen && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
             <div className="bg-white rounded-3xl p-4 sm:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4 shadow-xl border border-slate-100">
@@ -1042,9 +1124,6 @@ export default function App() {
                       className="w-full p-3 mt-1.5 bg-[#FAF7F2] border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
                     />
                   </details>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                    Laissez vide pour utiliser l'image de la catégorie.
-                  </p>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
@@ -1175,8 +1254,8 @@ export default function App() {
           </div>
         )}
 
-        {/* SECTION PLANNING */}
-        {activeTab === 'planning' && (
+        {/* SECTION PLANNING (PROTÉGÉE) */}
+        {activeTab === 'planning' && !isGuest && user && (
           <div className="space-y-4">
             <div className="flex bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
               <button
@@ -1345,8 +1424,8 @@ export default function App() {
           </div>
         )}
 
-        {/* SECTION PANIER / COURSES INTERACTIVE */}
-        {activeTab === 'shopping' && (
+        {/* SECTION PANIER / COURSES (PROTÉGÉE) */}
+        {activeTab === 'shopping' && !isGuest && user && (
           <div className="space-y-4">
             <div className="bg-white p-3 sm:p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
               <div className="flex items-center justify-between">
@@ -1398,7 +1477,7 @@ export default function App() {
               {/* Liste complète des éléments */}
               {shoppingList.length === 0 ? (
                 <p className="text-slate-400 text-xs font-semibold text-center py-4">
-                  Aucun article dans la liste. Cliquez sur "Importer du planning" ou ajoutez un élément ci-dessus.
+                  Aucun article dans la liste. Cliquez sur "Importer liste repas" ou ajoutez un élément ci-dessus.
                 </p>
               ) : (
                 <ul className="divide-y divide-slate-100">
@@ -1457,12 +1536,18 @@ export default function App() {
 
       </main>
 
-      {/* BARRE DE NAVIGATION FLOTTANTE */}
+      {/* BARRE DE NAVIGATION FLOTTANTE AVEC VERROUILLAGE VISUEL ET ACCÈS RESTREINT */}
       <div className="fixed bottom-4 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
         <nav className="pointer-events-auto flex gap-6 bg-white/90 backdrop-blur-md px-6 py-2 rounded-full shadow-xl border border-slate-100 items-center">
           
+          {/* FAVORIS */}
           <button
             onClick={() => {
+              if (isGuest || !user) {
+                alert("L'accès aux favoris nécessite un compte. Veuillez vous connecter.");
+                setShowAuthModal(true);
+                return;
+              }
               if (activeTab !== 'recipes') {
                 setActiveTab('recipes');
                 setActiveRecipe(null);
@@ -1475,7 +1560,7 @@ export default function App() {
               showFavoritesOnly && activeTab === 'recipes' ? 'text-red-500' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${
+            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition relative ${
               showFavoritesOnly && activeTab === 'recipes' ? 'bg-red-50 text-red-500' : ''
             }`}>
               <svg
@@ -1491,16 +1576,14 @@ export default function App() {
                   d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
                 />
               </svg>
+              {isGuest && <span className="absolute -top-1 -right-1 text-[10px]">🔒</span>}
             </div>
             <span>Favoris</span>
           </button>
 
+          {/* RECETTES (OUVERT A TOUS) */}
           <button
-            onClick={() => { 
-              setActiveTab('recipes'); 
-              setActiveRecipe(null); 
-              setShowFavoritesOnly(false); 
-            }}
+            onClick={() => handleTabChange('recipes')}
             className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
               activeTab === 'recipes' && !showFavoritesOnly ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
             }`}
@@ -1511,26 +1594,30 @@ export default function App() {
             <span>Recettes</span>
           </button>
 
+          {/* PLANNING (VERROUILLÉ EN INVITÉ) */}
           <button
-            onClick={() => setActiveTab('planning')}
+            onClick={() => handleTabChange('planning')}
             className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
               activeTab === 'planning' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'planning' ? 'bg-[#E8F3EB]' : ''}`}>
+            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition relative ${activeTab === 'planning' ? 'bg-[#E8F3EB]' : ''}`}>
               📅
+              {isGuest && <span className="absolute -top-1 -right-1 text-[10px]">🔒</span>}
             </div>
             <span>Planning</span>
           </button>
 
+          {/* COURSES (VERROUILLÉ EN INVITÉ) */}
           <button
-            onClick={() => setActiveTab('shopping')}
+            onClick={() => handleTabChange('shopping')}
             className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
               activeTab === 'shopping' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'shopping' ? 'bg-[#E8F3EB]' : ''}`}>
+            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition relative ${activeTab === 'shopping' ? 'bg-[#E8F3EB]' : ''}`}>
               🛒
+              {isGuest && <span className="absolute -top-1 -right-1 text-[10px]">🔒</span>}
             </div>
             <span>Courses</span>
           </button>
@@ -1538,7 +1625,7 @@ export default function App() {
         </nav>
       </div>
 
-      {/* MODALE AUTHENTIFICATION */}
+      {/* MODALE AUTHENTIFICATION COMPLÈTE */}
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
