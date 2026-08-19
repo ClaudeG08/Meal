@@ -472,6 +472,65 @@ const handleLeaveHome = async () => {
   }, [activeRecipe]);
 
   // --- COURSES ---
+// --- EXPORT PDF DE LA LISTE DE COURSES ---
+const exportShoppingListToPDF = () => {
+  if (shoppingList.length === 0) {
+    alert("Votre liste de courses est vide !");
+    return;
+  }
+
+  const doc = new jsPDF();
+
+  // En-tête
+  doc.setFontSize(18);
+  doc.setTextColor(44, 74, 52); // Couleur #2C4A34
+  doc.text("Gil'Meal - Liste de courses", 14, 20);
+
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  const dateStr = new Date().toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+  doc.text(`Généré le ${dateStr}${userHome ? ` • Foyer : ${userHome.name}` : ''}`, 14, 27);
+
+  // Préparation des données de la table
+  const tableRows = shoppingList.map((item, index) => [
+    index + 1,
+    item.checked ? '[X]' : '[ ]',
+    item.name.charAt(0).toUpperCase() + item.name.slice(1),
+    item.quantity ? `${item.quantity} ${item.unit || ''}`.trim() : '-',
+  ]);
+
+  // Génération de la table
+  doc.autoTable({
+    startY: 32,
+    head: [['#', 'Statut', 'Article', 'Quantité']],
+    body: tableRows,
+    headStyles: {
+      fillColor: [61, 102, 71], // Couleur #3D6647
+      textColor: 255,
+      fontStyle: 'bold',
+    },
+    alternateRowStyles: {
+      fillColor: [250, 247, 242], // Couleur #FAF7F2
+    },
+    styles: {
+      fontSize: 10,
+      cellPadding: 3,
+    },
+    columnStyles: {
+      0: { cellWidth: 12, halign: 'center' },
+      1: { cellWidth: 18, halign: 'center' },
+      2: { cellWidth: 'auto' },
+      3: { cellWidth: 35, halign: 'right' },
+    },
+  });
+
+  // Sauvegarde du fichier
+  doc.save(`liste-de-courses-${new Date().toISOString().split('T')[0]}.pdf`);
+};
   const generateShoppingListFromPlanning = async () => {
     const totals = {};
     plannedMeals.forEach((meal) => {
@@ -1912,65 +1971,7 @@ const handleLeaveHome = async () => {
             )}
           </div>
         )}
-// --- EXPORT PDF DE LA LISTE DE COURSES ---
-const exportShoppingListToPDF = () => {
-  if (shoppingList.length === 0) {
-    alert("Votre liste de courses est vide !");
-    return;
-  }
 
-  const doc = new jsPDF();
-
-  // En-tête
-  doc.setFontSize(18);
-  doc.setTextColor(44, 74, 52); // Couleur #2C4A34
-  doc.text("Gil'Meal - Liste de courses", 14, 20);
-
-  doc.setFontSize(10);
-  doc.setTextColor(100);
-  const dateStr = new Date().toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
-  doc.text(`Généré le ${dateStr}${userHome ? ` • Foyer : ${userHome.name}` : ''}`, 14, 27);
-
-  // Préparation des données de la table
-  const tableRows = shoppingList.map((item, index) => [
-    index + 1,
-    item.checked ? '[X]' : '[ ]',
-    item.name.charAt(0).toUpperCase() + item.name.slice(1),
-    item.quantity ? `${item.quantity} ${item.unit || ''}`.trim() : '-',
-  ]);
-
-  // Génération de la table
-  doc.autoTable({
-    startY: 32,
-    head: [['#', 'Statut', 'Article', 'Quantité']],
-    body: tableRows,
-    headStyles: {
-      fillColor: [61, 102, 71], // Couleur #3D6647
-      textColor: 255,
-      fontStyle: 'bold',
-    },
-    alternateRowStyles: {
-      fillColor: [250, 247, 242], // Couleur #FAF7F2
-    },
-    styles: {
-      fontSize: 10,
-      cellPadding: 3,
-    },
-    columnStyles: {
-      0: { cellWidth: 12, halign: 'center' },
-      1: { cellWidth: 18, halign: 'center' },
-      2: { cellWidth: 'auto' },
-      3: { cellWidth: 35, halign: 'right' },
-    },
-  });
-
-  // Sauvegarde du fichier
-  doc.save(`liste-de-courses-${new Date().toISOString().split('T')[0]}.pdf`);
-};
         {/* SECTION PANIER / COURSES */}
         {profileView === 'recipes' && activeTab === 'shopping' && !isGuest && user && (
           <div className="space-y-4">
