@@ -893,6 +893,14 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-slate-800 flex flex-col font-sans relative pb-28">
 
+      {/* MODALE D'AUTHENTIFICATION */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialView={authModalView}
+        onGuestLogin={handleGuestLogin}
+      />
+
       {/* EN-TÊTE AVEC BOUTON PERSONNAGE ET MENU PROFIL/HOME */}
       <header className="bg-white/80 backdrop-blur-md rounded-b-[32px] px-6 py-4 shadow-sm flex justify-between items-center max-w-2xl mx-auto w-full sticky top-0 z-30">
         <div
@@ -2059,12 +2067,6 @@ export default function App() {
         </nav>
       </div>
 
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onGuestLogin={handleGuestLogin}
-        initialView={authModalView}
-      />
     </div>
   );
 }
