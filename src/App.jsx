@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
+import AuthModal from './components/AuthModal';
 
-const PEXELS_API_KEY = 'XSzr1kGcMyAW5qhPBzp9RQwilhRk52anVz7Kvu1gyWKiYeqUY9u1YRa4';
+const PEXELS_API_KEY = process.env.REACT_APP_PEXELS_API_KEY || 'XSzr1kGcMyAW5qhPBzp9RQwilhRk52anVz7Kvu1gyWKiYeqUY9u1YRa4';
 const RECIPE_IMAGES_BUCKET = 'recipe-images';
 
 const MAIN_CATEGORIES = [
@@ -99,6 +100,12 @@ const searchRecipeImages = async (query) => {
 };
 
 export default function App() {
+  // --- ÉTATS D'AUTHENTIFICATION ---
+  const [user, setUser] = useState(null);
+  const [isGuest, setIsGuest] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // --- ÉTATS DE NAVIGATION ---
   const [activeTab, setActiveTab] = useState('recipes');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
@@ -182,6 +189,36 @@ export default function App() {
   const [newIngredientName, setNewIngredientName] = useState('');
   const [newIngredientQty, setNewIngredientQty] = useState('');
   const [newIngredientUnit, setNewIngredientUnit] = useState('g');
+
+  useEffect(() => {
+    // 1. Vérifie la session active
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (!session?.user) {
+        setShowAuthModal(true);
+      }
+    });
+
+    // 2. Écoute les évènements d'auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        setIsGuest(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setIsGuest(false);
+    setShowAuthModal(true);
+  };
+
+  const handleGuestLogin = () => {
+    setIsGuest(true);
+  };
 
   useEffect(() => {
     localStorage.setItem('planned_meals_v2', JSON.stringify(plannedMeals));
@@ -284,7 +321,7 @@ export default function App() {
     setShoppingList(shoppingList.filter((item) => item.id !== id));
   };
 
-  // --- GENERATION DES JOURS ---
+  // --- GÉNÉRATION DES JOURS ---
   const generateDays = () => {
     const daysList = [];
     const start = startDate ? new Date(startDate) : new Date();
@@ -503,11 +540,12 @@ export default function App() {
 
   const assignMealToAgenda = (dayId, slot, mealId) => {
     const key = `${dayId}-${slot}`;
-    setAgenda((prev) => ({ ...prev, [key]: mealId ? Number(mealId) : null }));
+    const parsedMealId = mealId ? Number(mealId) : null;
+    setAgenda((prev) => ({ ...prev, [key]: parsedMealId }));
 
     setPlannedMeals((prev) =>
       prev.map((meal) =>
-        meal.id === Number(mealId) ? { ...meal, assignedDay: dayId, assignedSlot: slot } : meal
+        meal.id === parsedMealId ? { ...meal, assignedDay: dayId, assignedSlot: slot } : meal
       )
     );
   };
@@ -573,13 +611,30 @@ export default function App() {
           </span>
         </div>
 
-        <button className="p-2 border border-slate-200 rounded-full text-slate-700 hover:bg-slate-50 transition relative">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-          <span className="absolute top-0 right-0 w-3 h-3 bg-[#EF6A45] rounded-full border-2 border-white"></span>
-        </button>
-      </header> 
+        <div className="flex items-center gap-3">
+          {user ? (
+            <div className="flex items-center gap-2 text-xs font-semibold">
+              <span className="hidden sm:inline text-slate-600">👤 {user.email}</span>
+              <button
+                onClick={handleLogout}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition"
+              >
+                Déconnexion
+              </button>
+            </div>
+          ) : isGuest ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-bold">Mode Invité</span>
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="bg-[#3D6647] text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-[#2f5037] transition"
+              >
+                Se connecter
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </header>
 
       {/* CONTENU PRINCIPAL */}
       <main className="flex-1 p-4 max-w-2xl mx-auto w-full space-y-5 overflow-x-hidden">
@@ -1092,16 +1147,12 @@ export default function App() {
                   <label className="block text-xs font-extrabold text-slate-600 uppercase mb-1">
                     Étapes de préparation
                   </label>
-                 <textarea
-  rows="4"
-  value={formInstructions}
-  onChange={(e) => {
-    setFormInstructions(e.target.value);
-    e.target.style.height = 'auto';
-    e.target.style.height = e.target.scrollHeight + 'px';
-  }}
-  className="w-full p-3 bg-[#FAF7F2] border border-slate-200 rounded-2xl text-xs font-medium overflow-hidden min-h-[120px]"
-></textarea>
+                  <textarea
+                    rows="4"
+                    value={formInstructions}
+                    onChange={(e) => setFormInstructions(e.target.value)}
+                    className="w-full p-3 bg-[#FAF7F2] border border-slate-200 rounded-2xl text-xs font-medium min-h-[120px]"
+                  ></textarea>
                 </div>
 
                 <div className="flex gap-2 pt-2">
@@ -1487,6 +1538,12 @@ export default function App() {
         </nav>
       </div>
 
+      {/* MODALE AUTHENTIFICATION */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onGuestLogin={handleGuestLogin}
+      />
     </div>
   );
 }
