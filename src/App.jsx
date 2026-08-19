@@ -772,13 +772,27 @@ export default function App() {
       user_id: user?.id || null,
     };
 
-    const { error } = await supabase.from('planned_meals').insert([payload]);
+    const { data, error } = await supabase.from('planned_meals').insert([payload]).select();
     if (error) {
       alert(`Erreur lors de l'ajout au planning : ${error.message}`);
       return;
     }
 
-    fetchPlannedMeals();
+    if (data && data.length > 0) {
+      const newMeal = {
+        id: data[0].id,
+        recipeId: data[0].recipe_id,
+        recipeTitle: data[0].recipe_title,
+        baseServings: data[0].base_servings || 4,
+        ingredients: data[0].ingredients || [],
+        guests: data[0].guests || 4,
+        assignedDay: data[0].assigned_day,
+        assignedSlot: data[0].assigned_slot,
+      };
+      setPlannedMeals((prev) => [...prev, newMeal]);
+    }
+
+    alert(`"${recipe.title}" a été ajouté au panier !`);
   };
 
   const removePlannedMeal = async (id) => {
