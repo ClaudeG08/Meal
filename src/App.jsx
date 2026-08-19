@@ -646,7 +646,7 @@ export default function App() {
     }
 
     fetchPlannedMeals();
-    alert(`"${recipe.title}" (${selectedGuests} pers.) ajouté au panier !`);
+    
   };
 
   const removePlannedMeal = async (id) => {
