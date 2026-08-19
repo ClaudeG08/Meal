@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import AuthModal from './components/AuthModal';
 
@@ -100,10 +100,13 @@ const searchRecipeImages = async (query) => {
 };
 
 export default function App() {
-  // --- ÉTATS D'AUTHENTIFICATION ---
+  // --- ÉTATS D'AUTHENTIFICATION & MENU DÉROULANT ---
   const [user, setUser] = useState(null);
   const [isGuest, setIsGuest] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileView, setProfileView] = useState('recipes'); // 'recipes', 'profile', 'home'
+  const menuRef = useRef(null);
 
   // --- ÉTATS DE NAVIGATION ---
   const [activeTab, setActiveTab] = useState('recipes');
@@ -116,6 +119,10 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeRecipe, setActiveRecipe] = useState(null);
   const [recipeDetailTab, setRecipeDetailTab] = useState('ingredients');
+
+  // --- ÉTATS PROFIL / HOME ---
+  const [newPassword, setNewPassword] = useState('');
+  const [homeCode, setHomeCode] = useState('');
 
   const toggleFavorite = async (recipeId, currentStatus, e) => {
     e.stopPropagation();
@@ -160,7 +167,7 @@ export default function App() {
   // --- ÉTATS SELECTION NOMBRE DE PERSONNES ---
   const [selectedGuests, setSelectedGuests] = useState(4);
 
-  // --- ÉTATS PLANNING & AGENDA (SYNCHRONISÉS SUPABASE) ---
+  // --- ÉTATS PLANNING & AGENDA ---
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(() => {
     const d = new Date();
@@ -172,11 +179,22 @@ export default function App() {
   const [agenda, setAgenda] = useState({});
   const [planningSubTab, setPlanningSubTab] = useState('meals');
 
-  // --- ÉTATS LISTE DE COURSES (SYNCHRONISÉE SUPABASE) ---
+  // --- ÉTATS LISTE DE COURSES ---
   const [shoppingList, setShoppingList] = useState([]);
   const [newIngredientName, setNewIngredientName] = useState('');
   const [newIngredientQty, setNewIngredientQty] = useState('');
   const [newIngredientUnit, setNewIngredientUnit] = useState('g');
+
+  // --- FERMER LE MENU AU CLIC EXTÉRIEUR ---
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // --- AUTHENTIFICATION ---
   useEffect(() => {
@@ -197,13 +215,12 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // --- RÉCUPÉRATION & SYNCHRONISATION EN TEMPS RÉEL (REALTIME) ---
+  // --- RÉCUPÉRATION & SYNCHRONISATION ---
   useEffect(() => {
     fetchRecipes();
     fetchPlannedMeals();
     fetchShoppingList();
 
-    // Abonnement Realtime pour le planning
     const mealsChannel = supabase
       .channel('public:planned_meals')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'planned_meals' }, () => {
@@ -211,7 +228,6 @@ export default function App() {
       })
       .subscribe();
 
-    // Abonnement Realtime pour les courses
     const shoppingChannel = supabase
       .channel('public:shopping_list')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shopping_list' }, () => {
@@ -250,7 +266,6 @@ export default function App() {
       }));
       setPlannedMeals(mapped);
 
-      // Reconstitution de l'agenda
       const newAgenda = {};
       mapped.forEach((m) => {
         if (m.assignedDay && m.assignedSlot) {
@@ -271,9 +286,23 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    setMenuOpen(false);
+    setProfileView('recipes');
     await supabase.auth.signOut();
     setIsGuest(false);
     setShowAuthModal(true);
+  };
+
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    if (!newPassword) return;
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      alert(`Erreur : ${error.message}`);
+    } else {
+      alert('Mot de passe mis à jour avec succès !');
+      setNewPassword('');
+    }
   };
 
   const handleGuestLogin = () => {
@@ -290,7 +319,7 @@ export default function App() {
     }
   }, [activeRecipe]);
 
-  // --- GÉNÉRATION DES COURSES DEPUIS LE PLANNING ---
+  // --- COURSES ---
   const generateShoppingListFromPlanning = async () => {
     const totals = {};
     plannedMeals.forEach((meal) => {
@@ -315,7 +344,6 @@ export default function App() {
 
     const newItems = Object.values(totals);
 
-    // Supprimer les anciens éléments et insérer les nouveaux
     await supabase.from('shopping_list').delete().neq('id', 0);
     if (newItems.length > 0) {
       const { error } = await supabase.from('shopping_list').insert(newItems);
@@ -362,7 +390,7 @@ export default function App() {
     await supabase.from('shopping_list').delete().eq('id', id);
   };
 
-  // --- GÉNÉRATION DES JOURS AGENDA ---
+  // --- AGENDA ---
   const generateDays = () => {
     const daysList = [];
     const start = startDate ? new Date(startDate) : new Date();
@@ -552,7 +580,7 @@ export default function App() {
     }
   };
 
-  // --- FILTRAGE DES RECETTES ---
+  // --- FILTRAGE DE RECETTES ---
   const filteredRecipes = recipes.filter((r) => {
     const matchMain = (r.category || 'Plats') === selectedMainCat;
     const matchSub = selectedSubCat === 'Tous' || r.subCategory === selectedSubCat;
@@ -566,20 +594,21 @@ export default function App() {
     return matchMain && matchSub && matchSearch && matchesFavorite;
   });
 
-  // --- RESTRICTION DES ONGLETS ---
+  // --- NAV TABS ---
   const handleTabChange = (tab) => {
     if ((isGuest || !user) && (tab === 'planning' || tab === 'shopping' || (tab === 'recipes' && showFavoritesOnly))) {
       alert("Cet onglet est verrouillé. Veuillez vous connecter pour y accéder.");
       setShowAuthModal(true);
       return;
     }
+    setProfileView('recipes');
     if (tab === 'recipes') {
       setShowFavoritesOnly(false);
     }
     setActiveTab(tab);
   };
 
-  // --- GESTION DES REPAS PLANIFIÉS (SUPABASE) ---
+  // --- GESTION PLANNING / AGENDA ---
   const addRecipeToPlanning = async (recipe) => {
     if (isGuest || !user) {
       alert("Veuillez vous connecter pour ajouter des repas au panier/planning.");
@@ -624,14 +653,12 @@ export default function App() {
   const assignMealToAgenda = async (dayId, slot, mealId) => {
     const parsedMealId = mealId ? Number(mealId) : null;
 
-    // Si le repas était déjà affecté à un slot, on réinitialise l'ancien slot
     if (parsedMealId) {
       await supabase
         .from('planned_meals')
         .update({ assigned_day: dayId, assigned_slot: slot })
         .eq('id', parsedMealId);
     } else {
-      // Désaffectation du repas actuellement présent dans ce slot
       const currentKey = `${dayId}-${slot}`;
       const currentMealId = agenda[currentKey];
       if (currentMealId) {
@@ -658,7 +685,6 @@ export default function App() {
       return;
     }
 
-    // Effacer les repas enregistrés actuels
     await supabase.from('planned_meals').delete().neq('id', 0);
 
     const newPlannedMeals = [];
@@ -688,11 +714,16 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#FAF7F2] text-slate-800 flex flex-col font-sans relative pb-28">
 
-      {/* EN-TÊTE */}
+      {/* EN-TÊTE AVEC BOUTON PERSONNAGE ET MENU PROFIL/HOME */}
       <header className="bg-white/80 backdrop-blur-md rounded-b-[32px] px-6 py-4 shadow-sm flex justify-between items-center max-w-2xl mx-auto w-full sticky top-0 z-30">
         <div
           className="flex items-center gap-2 cursor-pointer"
-          onClick={() => { setActiveTab('recipes'); setActiveRecipe(null); setShowFavoritesOnly(false); }}
+          onClick={() => {
+            setProfileView('recipes');
+            setActiveTab('recipes');
+            setActiveRecipe(null);
+            setShowFavoritesOnly(false);
+          }}
         >
           <img
             src="/logo.png"
@@ -705,16 +736,59 @@ export default function App() {
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* MENU DÉROULANT EN HAUT À DROITE */}
+        <div className="relative" ref={menuRef}>
           {user ? (
-            <div className="flex items-center gap-2 text-xs font-semibold">
-              <span className="hidden sm:inline text-slate-600">👤 {user.user_metadata?.username || user.email}</span>
+            <div>
               <button
-                onClick={handleLogout}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition"
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="w-10 h-10 rounded-full bg-[#E8F3EB] text-[#2C4A34] border border-[#3D6647]/20 flex items-center justify-center hover:bg-[#3D6647] hover:text-white transition shadow-sm"
+                title="Mon Compte"
               >
-                Déconnexion
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                </svg>
               </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="px-4 py-2 border-b border-slate-100">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">Connecté en tant que</p>
+                    <p className="text-xs font-bold text-slate-700 truncate">
+                      {user.user_metadata?.username || user.email}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setProfileView('profile');
+                      setMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-[#FAF7F2] hover:text-[#2C4A34] flex items-center gap-2 transition"
+                  >
+                    <span>👤</span> Profil
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setProfileView('home');
+                      setMenuOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-[#FAF7F2] hover:text-[#2C4A34] flex items-center gap-2 transition"
+                  >
+                    <span>🏠</span> Home
+                  </button>
+
+                  <div className="border-t border-slate-100 my-1"></div>
+
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-xs font-bold text-[#EF6A45] hover:bg-red-50 flex items-center gap-2 transition"
+                  >
+                    <span>🚪</span> Déconnexion
+                  </button>
+                </div>
+              )}
             </div>
           ) : isGuest ? (
             <div className="flex items-center gap-2">
@@ -733,8 +807,113 @@ export default function App() {
       {/* CONTENU PRINCIPAL */}
       <main className="flex-1 p-4 max-w-2xl mx-auto w-full space-y-5 overflow-x-hidden">
 
+        {/* VUE PROFIL */}
+        {profileView === 'profile' && user && (
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                <span>👤</span> Profil Utilisateur
+              </h2>
+              <button
+                onClick={() => setProfileView('recipes')}
+                className="text-xs font-extrabold text-[#3D6647] hover:underline"
+              >
+                ← Retour
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-slate-100 space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="font-bold text-slate-500">Identifiant :</span>
+                  <span className="font-extrabold text-slate-800">
+                    {user.user_metadata?.username || 'Non renseigné'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="font-bold text-slate-500">Email :</span>
+                  <span className="font-extrabold text-slate-800">{user.email}</span>
+                </div>
+              </div>
+
+              <form onSubmit={handlePasswordReset} className="space-y-3 pt-2">
+                <h3 className="text-xs font-extrabold text-slate-700 uppercase">
+                  Changer le mot de passe
+                </h3>
+                <input
+                  type="password"
+                  placeholder="Nouveau mot de passe"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full p-3 bg-[#FAF7F2] border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
+                  required
+                />
+                <button
+                  type="submit"
+                  className="w-full bg-[#3D6647] hover:bg-[#2f5037] text-white font-extrabold py-3 rounded-2xl text-xs transition"
+                >
+                  Mettre à jour le mot de passe
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* VUE HOME (FOYER PARTICIPATIF) */}
+        {profileView === 'home' && user && (
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                <span>🏠</span> Gestion du Foyer ("Home")
+              </h2>
+              <button
+                onClick={() => setProfileView('recipes')}
+                className="text-xs font-extrabold text-[#3D6647] hover:underline"
+              >
+                ← Retour
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+              Créez ou rejoignez un foyer commun pour partager le planning des repas et la liste de courses avec vos proches.
+            </p>
+
+            <div className="space-y-4">
+              <div className="bg-[#E8F3EB] p-4 rounded-2xl border border-[#3D6647]/20 space-y-2">
+                <h3 className="text-xs font-extrabold text-[#2C4A34] uppercase">Créer un nouveau foyer</h3>
+                <p className="text-[11px] text-slate-600">Générez un groupe familial/colocation pour partager vos repas.</p>
+                <button
+                  onClick={() => alert("Fonctionnalité de création de foyer bientôt disponible.")}
+                  className="bg-[#2C4A34] text-white font-extrabold px-4 py-2 rounded-xl text-xs hover:bg-[#1f3525] transition"
+                >
+                  + Créer mon Home
+                </button>
+              </div>
+
+              <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-slate-200 space-y-3">
+                <h3 className="text-xs font-extrabold text-slate-700 uppercase">Rejoindre un foyer existant</h3>
+                <input
+                  type="text"
+                  placeholder="Entrer le code du Home..."
+                  value={homeCode}
+                  onChange={(e) => setHomeCode(e.target.value)}
+                  className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#3D6647]"
+                />
+                <button
+                  onClick={() => {
+                    if (homeCode) alert(`Demande de raccordement au foyer : ${homeCode}`);
+                  }}
+                  className="w-full bg-[#EF6A45] hover:bg-[#d95a37] text-white font-extrabold py-3 rounded-2xl text-xs transition"
+                >
+                  Rejoindre
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* SECTION RECETTES */}
-        {activeTab === 'recipes' && !activeRecipe && (
+        {profileView === 'recipes' && activeTab === 'recipes' && !activeRecipe && (
           <div className="space-y-5">
             {/* BANNIÈRE */}
             <div className="max-w-2xl mx-auto w-full px-4 pt-4">
@@ -917,7 +1096,7 @@ export default function App() {
         )}
 
         {/* VUE DÉTAIL RECETTE */}
-        {activeTab === 'recipes' && activeRecipe && (
+        {profileView === 'recipes' && activeTab === 'recipes' && activeRecipe && (
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 space-y-5">
             <div className="flex justify-between items-center">
               <button
@@ -1293,7 +1472,7 @@ export default function App() {
         )}
 
         {/* SECTION PLANNING */}
-        {activeTab === 'planning' && !isGuest && user && (
+        {profileView === 'recipes' && activeTab === 'planning' && !isGuest && user && (
           <div className="space-y-4">
             <div className="flex bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
               <button
@@ -1463,7 +1642,7 @@ export default function App() {
         )}
 
         {/* SECTION PANIER / COURSES */}
-        {activeTab === 'shopping' && !isGuest && user && (
+        {profileView === 'recipes' && activeTab === 'shopping' && !isGuest && user && (
           <div className="space-y-4">
             <div className="bg-white p-3 sm:p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
               <div className="flex items-center justify-between">
@@ -1583,6 +1762,7 @@ export default function App() {
                 setShowAuthModal(true);
                 return;
               }
+              setProfileView('recipes');
               if (activeTab !== 'recipes') {
                 setActiveTab('recipes');
                 setActiveRecipe(null);
@@ -1592,15 +1772,15 @@ export default function App() {
               }
             }}
             className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
-              showFavoritesOnly && activeTab === 'recipes' ? 'text-red-500' : 'text-slate-400 hover:text-slate-600'
+              showFavoritesOnly && activeTab === 'recipes' && profileView === 'recipes' ? 'text-red-500' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
             <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition relative ${
-              showFavoritesOnly && activeTab === 'recipes' ? 'bg-red-50 text-red-500' : ''
+              showFavoritesOnly && activeTab === 'recipes' && profileView === 'recipes' ? 'bg-red-50 text-red-500' : ''
             }`}>
               <svg
                 className="w-5 h-5"
-                fill={showFavoritesOnly && activeTab === 'recipes' ? 'currentColor' : 'none'}
+                fill={showFavoritesOnly && activeTab === 'recipes' && profileView === 'recipes' ? 'currentColor' : 'none'}
                 stroke="currentColor"
                 strokeWidth="2"
                 viewBox="0 0 24 24"
@@ -1619,10 +1799,10 @@ export default function App() {
           <button
             onClick={() => handleTabChange('recipes')}
             className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
-              activeTab === 'recipes' && !showFavoritesOnly ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
+              activeTab === 'recipes' && !showFavoritesOnly && profileView === 'recipes' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'recipes' && !showFavoritesOnly ? 'bg-[#E8F3EB]' : ''}`}>
+            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition ${activeTab === 'recipes' && !showFavoritesOnly && profileView === 'recipes' ? 'bg-[#E8F3EB]' : ''}`}>
               📖
             </div>
             <span>Recettes</span>
@@ -1631,10 +1811,10 @@ export default function App() {
           <button
             onClick={() => handleTabChange('planning')}
             className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
-              activeTab === 'planning' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
+              activeTab === 'planning' && profileView === 'recipes' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition relative ${activeTab === 'planning' ? 'bg-[#E8F3EB]' : ''}`}>
+            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition relative ${activeTab === 'planning' && profileView === 'recipes' ? 'bg-[#E8F3EB]' : ''}`}>
               📅
               {isGuest && <span className="absolute -top-1 -right-1 text-[10px]">🔒</span>}
             </div>
@@ -1644,10 +1824,10 @@ export default function App() {
           <button
             onClick={() => handleTabChange('shopping')}
             className={`flex flex-col items-center gap-0.5 text-xs font-extrabold transition ${
-              activeTab === 'shopping' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
+              activeTab === 'shopping' && profileView === 'recipes' ? 'text-[#3D6647]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
-            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition relative ${activeTab === 'shopping' ? 'bg-[#E8F3EB]' : ''}`}>
+            <div className={`w-9 h-9 flex items-center justify-center text-lg rounded-full transition relative ${activeTab === 'shopping' && profileView === 'recipes' ? 'bg-[#E8F3EB]' : ''}`}>
               🛒
               {isGuest && <span className="absolute -top-1 -right-1 text-[10px]">🔒</span>}
             </div>
